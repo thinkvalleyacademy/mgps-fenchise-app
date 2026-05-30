@@ -1,0 +1,31 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "MGPS PostgreSQL Server",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "postgres",
+      "Password": "postgres123",
+      "SSLMode": "prefer",
+      "Shared": false,
+      "Notification": 3,
+      "Comment": "Master PostgreSQL server for MGPS multi-tenant application",
+      "DBRestrictionList": [],
+      "ConnectTimeoutInSeconds": 10,
+      "TrustServerCertificate": false,
+      "UseSSHTunnel": 0,
+      "Tunnel": 0,
+      "Var": 0,
+      "AutoReconnect": 1,
+      "KeyFile": "",
+      "IdentityFile": "",
+      "Timeout": 0,
+      "LogicalReplicationSlotName": "",
+      "BackupPath": "/var/lib/pgadmin/storage/backup",
+      "BackupServer": "",
+      "Databases": {}
+    }
+  }
+}

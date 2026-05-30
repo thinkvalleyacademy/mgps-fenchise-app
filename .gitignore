@@ -1,0 +1,99 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.backup
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Gradle
+.gradle
+/build/
+gradle-app.setting
+.gradletasknamecache
+
+# Spring Boot
+/bin/
+/.mvn/wrapper/maven-wrapper.jar
+/.mvn/wrapper/maven-wrapper.properties
+/mvnw
+/mvnw.cmd
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+
+# Uploads and temp files
+uploads/
+temp/
+tmp/
+*.tmp
+
+# OS
+Thumbs.db
+*.exe
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# IntelliJ
+*.iml
+*.iws
+*.ipr
+
+# NetBeans
+/nbproject/
+/nb-configuration.xml
+
+# VS Code
+.vscode/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Documentation
+site/
+
+# Misc
+.tern-port

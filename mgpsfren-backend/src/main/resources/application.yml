@@ -1,0 +1,119 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+    min-response-size: 1024
+  http2:
+    enabled: true
+  error:
+    include-message: always
+    include-stacktrace: on_param
+    include-binding-errors: always
+
+spring:
+  application:
+    name: MGPS School Management System
+  
+  datasource:
+    # Master Database Connection
+    url: jdbc:postgresql://localhost:5432/mgps_master
+    username: postgres
+    password: postgres123
+    driver-class-name: org.postgresql.Driver
+    
+    # Connection Pool Configuration
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      auto-commit: true
+
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Create tables from JPA entities
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+    show-sql: false
+    open-in-view: false
+
+  # Flyway Database Migration Configuration
+  flyway:
+    enabled: false
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    out-of-order: false
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+
+  # Security Configuration
+  security:
+    user:
+      name: admin
+      password: admin123
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.mgps: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/mgps.log
+    max-size: 10MB
+    max-history: 30
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Application-specific Configuration
+app:
+  jwt:
+    secret-key: ${JWT_SECRET:your-secret-key-change-in-production-min-256-bits}
+    expiration: 86400000  # 24 hours in milliseconds
+    refresh-expiration: 604800000  # 7 days in milliseconds
+  
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:4200
+    allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH
+    allowed-headers: Content-Type,Authorization
+    allow-credentials: true
+    max-age: 3600
+  
+  file:
+    upload-dir: uploads/
+    max-file-size: 10485760  # 10 MB in bytes
+    allowed-extensions: jpg,jpeg,png,pdf,doc,docx,xls,xlsx
