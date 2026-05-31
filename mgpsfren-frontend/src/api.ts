@@ -208,6 +208,22 @@ export async function createFeeStructure(payload: any): Promise<any> {
   return request('/fees/structures', { method: 'POST', body: JSON.stringify(payload) });
 }
 
+export async function applyFeeDiscount(studentFeeId: string, amount: number, reason: string): Promise<any> {
+  return request(`/fees/student-fees/${studentFeeId}/discount?amount=${amount}&reason=${encodeURIComponent(reason)}`, { method: 'PATCH' });
+}
+
+export async function fetchSchoolFeeReport(schoolId: string, academicYearId: string): Promise<any> {
+  return request(`/fees/reports/school-overall?schoolId=${schoolId}&academicYearId=${academicYearId}`);
+}
+
+export async function fetchClassFeeReport(schoolId: string, academicYearId: string): Promise<any[]> {
+  return request(`/fees/reports/class-wise?schoolId=${schoolId}&academicYearId=${academicYearId}`);
+}
+
+export async function fetchStudentFeeReport(classId: string): Promise<any[]> {
+  return request(`/fees/reports/student-wise?classId=${classId}`);
+}
+
 export async function assignFeeToStudent(studentId: string, structureId: string): Promise<any> {
   return request(`/fees/assign?studentId=${studentId}&structureId=${structureId}`, { method: 'POST' });
 }
@@ -218,6 +234,10 @@ export async function fetchStudentFees(studentId: string): Promise<any[]> {
 
 export async function processPayment(payload: any): Promise<any> {
   return request('/fees/payments', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function fetchRecentPayments(schoolId: string): Promise<any[]> {
+  return request(`/fees/payments/recent?schoolId=${schoolId}`);
 }
 
 export function buildSchoolPreview(name: string) {

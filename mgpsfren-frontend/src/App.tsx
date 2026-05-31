@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import CreateSchoolForm from './components/CreateSchoolForm';
 import LoginModule from './components/LoginModule';
 import FeeManagementModule from './components/FeeManagementModule';
-import { buildSchoolPreview, checkSuperAdminStatus, createSchool, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, updateSchool, deleteSchool, registerUser, fetchUsers, setAuthToken, fetchAcademicYears, createAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, onboardStaff, fetchStaff } from './api';
+import { buildSchoolPreview, checkSuperAdminStatus, createSchool, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, updateSchool, deleteSchool, registerUser, fetchUsers, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, onboardStaff, fetchStaff, fetchFeeStructures } from './api';
 import type {
   AuthProfile,
   SchoolRegistrationPayload,
@@ -1134,6 +1134,8 @@ function StudentManagementModule({ schoolId }: { schoolId: string }) {
   const [students, setStudents] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
+  const [availableFees, setAvailableFees] = useState<any[]>([]);
+  const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -1154,22 +1156,46 @@ function StudentManagementModule({ schoolId }: { schoolId: string }) {
   useEffect(() => {
     if (form.classId) {
       fetchSections(form.classId).then(setSections);
+      fetchAcademicYears(schoolId).then(years => {
+        const activeYear = years.find(y => y.isActive);
+        if (activeYear) {
+          fetchFeeStructures(schoolId, activeYear.yearId).then(structures => {
+            const classFees = structures.filter((s: any) => s.classId === null || s.classId === form.classId);
+            setAvailableFees(classFees);
+            setSelectedFeeIds(classFees.filter((s: any) => s.isDefault).map((s: any) => s.id));
+          });
+        } else {
+          setAvailableFees([]);
+          setSelectedFeeIds([]);
+        }
+      });
     } else {
       setSections([]);
+      setAvailableFees([]);
+      setSelectedFeeIds([]);
     }
-  }, [form.classId]);
+  }, [form.classId, schoolId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await admitStudent({ ...form, schoolId });
+      await admitStudent({ 
+        ...form, 
+        schoolId, 
+        feeStructureIds: selectedFeeIds 
+      });
       setShowForm(false);
       setForm({ firstName: '', lastName: '', email: '', phone: '', classId: '', sectionId: '', admissionNumber: '' });
+      setSelectedFeeIds([]);
       fetchStudents(schoolId).then(setStudents);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to admit student');
     }
   }
+
+  const toggleFee = (id: string) => {
+    setSelectedFeeIds(prev => prev.includes(id) ? prev.filter(fid => fid !== id) : [...prev, id]);
+  };
 
   return (
     <section className="module-panel">
@@ -1192,7 +1218,7 @@ function StudentManagementModule({ schoolId }: { schoolId: string }) {
             <label>Class 
               <select value={form.classId} onChange={e => setForm({ ...form, classId: e.target.value })} required>
                 <option value="">Select Class</option>
-                {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
               </select>
             </label>
             <label>Section 
@@ -1202,7 +1228,35 @@ function StudentManagementModule({ schoolId }: { schoolId: string }) {
               </select>
             </label>
           </div>
-          <button type="submit" className="primary" style={{ marginTop: 12 }}>Confirm Admission</button>
+
+          {form.classId && availableFees.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <p className="section-label">Applicable Fees</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginTop: 8 }}>
+                {availableFees.map(fee => (
+                  <label key={fee.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8, background: 'rgba(255,255,255,0.03)', borderRadius: 4, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={selectedFeeIds.includes(fee.id)} onChange={() => toggleFee(fee.id)} />
+                    <div>
+                      <strong style={{ display: 'block', fontSize: '0.9rem' }}>{fee.feeCategoryName}</strong>
+                      <span className="hint">₹{fee.amount.toLocaleString()}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <p className="hint" style={{ marginTop: 8 }}>Selected fees will be assigned to the student upon admission. Default fees are pre-selected.</p>
+            </div>
+          )}
+
+          {form.classId && availableFees.length === 0 && (
+              <div style={{ marginTop: 16, padding: 12, background: 'rgba(255,165,0,0.1)', borderRadius: 4, border: '1px solid rgba(255,165,0,0.2)' }}>
+                  <p className="hint" style={{ color: 'var(--gold)' }}>
+                      <strong>Note:</strong> No fee structures found for the selected class in the current active session. 
+                      Please ensure a session is <strong>Activated</strong> in the 'Academic Session' module and fees are defined in 'Fees' &rarr; 'Structure'.
+                  </p>
+              </div>
+          )}
+
+          <button type="submit" className="primary" style={{ marginTop: 24 }}>Confirm Admission</button>
         </form>
       )}
 
@@ -1218,7 +1272,7 @@ function StudentManagementModule({ schoolId }: { schoolId: string }) {
               <tr><td colSpan={5}>No students enrolled.</td></tr>
             ) : (
               students.map(s => (
-                <tr key={s.id}>
+                <tr key={s.studentId}>
                   <td>{s.admissionNumber}</td>
                   <td>{s.firstName} {s.lastName}</td>
                   <td>{s.className} - {s.sectionName}</td>
@@ -1308,7 +1362,7 @@ function StaffManagementModule({ schoolId }: { schoolId: string }) {
               <tr><td colSpan={5}>No staff onboarded.</td></tr>
             ) : (
               staff.map(s => (
-                <tr key={s.id}>
+                <tr key={s.staffId}>
                   <td>{s.employeeId}</td>
                   <td>{s.firstName} {s.lastName}</td>
                   <td><span className="badge">{s.role}</span></td>
@@ -1390,7 +1444,7 @@ function AcademicSessionModule({ schoolId }: { schoolId: string }) {
               <tr><td colSpan={5}>No sessions found.</td></tr>
             ) : (
               sessions.map(s => (
-                <tr key={s.id}>
+                <tr key={s.yearId}>
                   <td>{s.name}</td>
                   <td>{s.startDate}</td>
                   <td>{s.endDate}</td>
@@ -1462,7 +1516,7 @@ function ClassManagementModule({ schoolId }: { schoolId: string }) {
               <tr><td colSpan={3}>No classes found.</td></tr>
             ) : (
               classes.map(c => (
-                <tr key={c.id}>
+                <tr key={c.classId}>
                   <td>{c.name}</td>
                   <td>{c.code}</td>
                   <td>{c.sections?.length || 0} sections</td>
@@ -1498,7 +1552,7 @@ function SectionManagementModule({ schoolId }: { schoolId: string }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await createSection({ ...form, classId: selectedClassId });
+      await createSection({ ...form, classId: selectedClassId, schoolId });
       setShowForm(false);
       setForm({ name: '', capacity: 40 });
       fetchSections(selectedClassId).then(setSections);
@@ -1517,7 +1571,7 @@ function SectionManagementModule({ schoolId }: { schoolId: string }) {
         <div style={{ display: 'flex', gap: 12 }}>
           <select className="secondary" value={selectedClassId} onChange={e => setSelectedClassId(e.target.value)}>
             <option value="">Select Class</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
           </select>
           {selectedClassId && (
             <button className="primary small" onClick={() => setShowForm(!showForm)}>{showForm ? 'Cancel' : 'Create Section'}</button>
@@ -1582,7 +1636,7 @@ function SubjectManagementModule({ schoolId }: { schoolId: string }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await createSubject({ ...form, classId: selectedClassId });
+      await createSubject({ ...form, classId: selectedClassId, schoolId });
       setShowForm(false);
       setForm({ name: '', code: '', subjectType: 'CORE' });
       fetchSubjects(selectedClassId).then(setSubjects);
@@ -1601,7 +1655,7 @@ function SubjectManagementModule({ schoolId }: { schoolId: string }) {
         <div style={{ display: 'flex', gap: 12 }}>
           <select className="secondary" value={selectedClassId} onChange={e => setSelectedClassId(e.target.value)}>
             <option value="">Select Class</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
           </select>
           {selectedClassId && (
             <button className="primary small" onClick={() => setShowForm(!showForm)}>{showForm ? 'Cancel' : 'Create Subject'}</button>

@@ -1,25 +1,42 @@
 import { useEffect, useState } from 'react';
-import { fetchFeeCategories, createFeeCategory, fetchFeeStructures, createFeeStructure, fetchStudents, fetchStudentFees, processPayment, fetchAcademicYears } from '../api';
+import { fetchFeeCategories, createFeeCategory, fetchFeeStructures, createFeeStructure, fetchStudents, fetchStudentFees, processPayment, fetchAcademicYears, applyFeeDiscount, fetchSchoolFeeReport, fetchClassFeeReport, fetchStudentFeeReport, fetchClasses, assignFeeToStudent, fetchRecentPayments } from '../api';
+import FeeCollectionModal from './FeeCollectionModal';
 
 interface FeeManagementModuleProps {
   schoolId: string;
 }
 
 export default function FeeManagementModule({ schoolId }: FeeManagementModuleProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'categories' | 'structures' | 'collection'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'categories' | 'structures' | 'collection' | 'reports'>('dashboard');
   const [categories, setCategories] = useState<any[]>([]);
   const [structures, setStructures] = useState<any[]>([]);
   const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [selectedYearId, setSelectedYearId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form states
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
-  const [structureForm, setStructureForm] = useState({ feeCategoryId: '', amount: '', dueDate: '', classId: '' });
+  const [structureForm, setStructureForm] = useState({ feeCategoryId: '', amount: '', dueDate: '', classId: '', isDefault: true, recurrenceType: 'ONE_TIME' });
+
+  // Reporting states
+  const [schoolReport, setSchoolReport] = useState<any>(null);
+  const [classReports, setClassReports] = useState<any[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [studentReports, setStudentReports] = useState<any[]>([]);
+  const [recentPayments, setRecentPayments] = useState<any[]>([]);
+
+  // Collection states
+  const [students, setStudents] = useState<any[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [studentFees, setStudentFees] = useState<any[]>([]);
+  const [showCollectionModal, setShowCollectionModal] = useState(false);
+  const [collectingFee, setCollectingFee] = useState<any>(null);
 
   useEffect(() => {
     loadBaseData();
+    fetchClasses(schoolId).then(setClasses);
   }, [schoolId]);
 
   async function loadBaseData() {
@@ -31,8 +48,9 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
       ]);
       setCategories(cats);
       setAcademicYears(years);
-      if (years.length > 0) {
-        setSelectedYearId(years[0].id);
+      const active = years.find(y => y.isActive) || years[0];
+      if (active) {
+        setSelectedYearId(active.yearId);
       }
     } catch (err) {
       setError('Failed to load fee data');
@@ -45,7 +63,20 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
     if (selectedYearId && activeTab === 'structures') {
       loadStructures();
     }
-  }, [selectedYearId, activeTab]);
+    if (selectedYearId && activeTab === 'dashboard') {
+        fetchSchoolFeeReport(schoolId, selectedYearId).then(setSchoolReport);
+        fetchRecentPayments(schoolId).then(setRecentPayments);
+    }
+    if (selectedYearId && activeTab === 'reports') {
+        fetchClassFeeReport(schoolId, selectedYearId).then(setClassReports);
+    }
+  }, [selectedYearId, activeTab, schoolId]);
+
+  useEffect(() => {
+      if (selectedClassId && activeTab === 'reports') {
+          fetchStudentFeeReport(selectedClassId).then(setStudentReports);
+      }
+  }, [selectedClassId, activeTab]);
 
   async function loadStructures() {
     try {
@@ -75,24 +106,39 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
         ...structureForm,
         schoolId,
         academicYearId: selectedYearId,
-        amount: parseFloat(structureForm.amount)
+        amount: parseFloat(structureForm.amount),
+        classId: structureForm.classId === '' ? null : structureForm.classId
       });
-      setStructureForm({ feeCategoryId: '', amount: '', dueDate: '', classId: '' });
+      setStructureForm({ feeCategoryId: '', amount: '', dueDate: '', classId: '', isDefault: true, recurrenceType: 'ONE_TIME' });
       loadStructures();
     } catch (err) {
       setError('Failed to create fee structure');
     }
   }
 
-  const [students, setStudents] = useState<any[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [studentFees, setStudentFees] = useState<any[]>([]);
+  const [showDiscountForm, setShowDiscountForm] = useState<string | null>(null);
+  const [discountForm, setDiscountForm] = useState({ amount: '', reason: '' });
+
+  const [availableStructures, setAvailableFeesToAssign] = useState<any[]>([]);
+  const [showAssignForm, setShowAssignForm] = useState(false);
+  const [assigningStructureId, setAssigningStructureId] = useState('');
 
   useEffect(() => {
     if (activeTab === 'collection') {
       loadStudents();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+      if (selectedStudent && selectedYearId) {
+          fetchFeeStructures(schoolId, selectedYearId).then(all => {
+              // Filter out ones already assigned
+              const assignedIds = studentFees.map(sf => sf.feeStructureId);
+              const unassigned = all.filter((s: any) => !assignedIds.includes(s.id));
+              setAvailableFeesToAssign(unassigned);
+          });
+      }
+  }, [selectedStudent, studentFees, selectedYearId, schoolId]);
 
   async function loadStudents() {
     try {
@@ -105,12 +151,44 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
 
   async function handleSelectStudent(student: any) {
     setSelectedStudent(student);
+    setShowAssignForm(false);
     try {
-      const fees = await fetchStudentFees(student.id);
+      const fees = await fetchStudentFees(student.studentId || student.id);
       setStudentFees(fees);
     } catch (err) {
       setError('Failed to load student fees');
     }
+  }
+
+  async function handleAssignFee(e: React.FormEvent) {
+      e.preventDefault();
+      if (!selectedStudent || !assigningStructureId) return;
+      try {
+          await assignFeeToStudent(selectedStudent.studentId || selectedStudent.id, assigningStructureId);
+          setAssigningStructureId('');
+          setShowAssignForm(false);
+          handleSelectStudent(selectedStudent);
+      } catch (err) {
+          alert('Failed to assign fee');
+      }
+  }
+
+  async function handleApplyDiscount(e: React.FormEvent) {
+      e.preventDefault();
+      if (!showDiscountForm) return;
+      try {
+          await applyFeeDiscount(showDiscountForm, parseFloat(discountForm.amount), discountForm.reason);
+          setShowDiscountForm(null);
+          setDiscountForm({ amount: '', reason: '' });
+          handleSelectStudent(selectedStudent); // Refresh
+      } catch (err) {
+          alert('Failed to apply discount');
+      }
+  }
+
+  function handleCollectClick(fee: any) {
+      setCollectingFee(fee);
+      setShowCollectionModal(true);
   }
 
   return (
@@ -118,9 +196,14 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
       <div className="module-header">
         <div>
           <p className="section-label">Finance & Fees</p>
-          <h2>{activeTab === 'dashboard' ? 'Fee Dashboard' : activeTab === 'categories' ? 'Fee Categories' : activeTab === 'structures' ? 'Fee Structure' : 'Fee Collection'}</h2>
+          <h2>{activeTab === 'dashboard' ? 'Fee Dashboard' : activeTab === 'categories' ? 'Fee Categories' : activeTab === 'structures' ? 'Fee Structure' : activeTab === 'collection' ? 'Fee Collection' : 'Fee Reports'}</h2>
         </div>
-        <span className="badge">Active Session</span>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <select className="secondary small" value={selectedYearId} onChange={e => setSelectedYearId(e.target.value)}>
+                {academicYears.map(y => <option key={y.yearId} value={y.yearId}>{y.name}</option>)}
+            </select>
+            <span className="badge">Active Session</span>
+        </div>
       </div>
 
       <div className="tabs" style={{ marginBottom: 24 }}>
@@ -128,28 +211,59 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
         <button className={activeTab === 'categories' ? 'active' : ''} onClick={() => setActiveTab('categories')}>Categories</button>
         <button className={activeTab === 'structures' ? 'active' : ''} onClick={() => setActiveTab('structures')}>Structure</button>
         <button className={activeTab === 'collection' ? 'active' : ''} onClick={() => setActiveTab('collection')}>Collection</button>
+        <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>Reports</button>
       </div>
 
       {error && <p className="error">{error}</p>}
 
-      {activeTab === 'dashboard' && (
-        <div className="module-card-grid">
-          <article className="module-card">
-            <h4>Total Receivables</h4>
-            <p className="stat-value">₹0</p>
-            <p className="hint">Expected fees for current session</p>
-          </article>
-          <article className="module-card">
-            <h4>Total Collected</h4>
-            <p className="stat-value" style={{ color: 'var(--accent)' }}>₹0</p>
-            <p className="hint">Successfully processed payments</p>
-          </article>
-          <article className="module-card">
-            <h4>Outstanding</h4>
-            <p className="stat-value" style={{ color: 'var(--danger)' }}>₹0</p>
-            <p className="hint">Pending dues from students</p>
-          </article>
-        </div>
+      {activeTab === 'dashboard' && schoolReport && (
+        <>
+            <div className="module-card-grid">
+            <article className="module-card">
+                <h4>Total Receivables</h4>
+                <p className="stat-value">₹{schoolReport.overallExpected.toLocaleString()}</p>
+                <p className="hint">Expected fees for selected session</p>
+            </article>
+            <article className="module-card">
+                <h4>Total Collected</h4>
+                <p className="stat-value" style={{ color: 'var(--accent)' }}>₹{schoolReport.overallCollected.toLocaleString()}</p>
+                <p className="hint">Successfully processed payments</p>
+            </article>
+            <article className="module-card">
+                <h4>Discounts Given</h4>
+                <p className="stat-value" style={{ color: 'var(--gold)' }}>₹{schoolReport.overallDiscounted.toLocaleString()}</p>
+                <p className="hint">Total fee waivers applied</p>
+            </article>
+            <article className="module-card">
+                <h4>Outstanding</h4>
+                <p className="stat-value" style={{ color: 'var(--danger)' }}>₹{schoolReport.overallOutstanding.toLocaleString()}</p>
+                <p className="hint">Pending dues from {schoolReport.activeStudentsCount} students</p>
+            </article>
+            </div>
+
+            <div className="card" style={{ marginTop: 24 }}>
+                <h3>Recent Collections</h3>
+                <div className="table-wrap">
+                    <table className="module-table">
+                        <thead>
+                            <tr><th>Date</th><th>Receipt</th><th>Amount</th><th>Mode</th><th>Remarks</th></tr>
+                        </thead>
+                        <tbody>
+                            {recentPayments.map((p, idx) => (
+                                <tr key={p.receiptNumber || idx}>
+                                    <td>{new Date(p.paymentDate).toLocaleDateString()}</td>
+                                    <td><code>{p.receiptNumber}</code></td>
+                                    <td><strong>₹{p.amountPaid.toLocaleString()}</strong></td>
+                                    <td><span className="badge">{p.paymentMode}</span></td>
+                                    <td className="hint">{p.remarks}</td>
+                                </tr>
+                            ))}
+                            {recentPayments.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center' }}>No recent payments found.</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </>
       )}
 
       {activeTab === 'categories' && (
@@ -196,17 +310,8 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
 
       {activeTab === 'structures' && (
         <div className="module-shell">
-          <div className="card" style={{ marginBottom: 20 }}>
-            <label>
-              Select Academic Year
-              <select value={selectedYearId} onChange={e => setSelectedYearId(e.target.value)}>
-                {academicYears.map(y => <option key={y.id} value={y.id}>{y.yearName}</option>)}
-              </select>
-            </label>
-          </div>
-
           <form className="card" onSubmit={handleCreateStructure}>
-            <h3>Define Fee for {academicYears.find(y => y.id === selectedYearId)?.yearName}</h3>
+            <h3>Define Fee for {academicYears.find(y => y.yearId === selectedYearId)?.name}</h3>
             <div className="form-grid">
               <label>
                 Category
@@ -220,8 +325,26 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                 <input type="number" value={structureForm.amount} onChange={e => setStructureForm({ ...structureForm, amount: e.target.value })} placeholder="0.00" required />
               </label>
               <label>
+                Recurrence
+                <select value={structureForm.recurrenceType} onChange={e => setStructureForm({ ...structureForm, recurrenceType: e.target.value })} required>
+                  <option value="ONE_TIME">One-time (Admission/Annual)</option>
+                  <option value="MONTHLY">Monthly Recurring</option>
+                </select>
+              </label>
+              <label>
                 Due Date
                 <input type="date" value={structureForm.dueDate} onChange={e => setStructureForm({ ...structureForm, dueDate: e.target.value })} required />
+              </label>
+              <label>
+                Target Class (Optional)
+                <select value={structureForm.classId} onChange={e => setStructureForm({ ...structureForm, classId: e.target.value })}>
+                  <option value="">All Classes</option>
+                  {classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
+                </select>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="checkbox" checked={structureForm.isDefault} onChange={e => setStructureForm({ ...structureForm, isDefault: e.target.checked })} />
+                <span>Mark as Default (Auto-assign on admission)</span>
               </label>
             </div>
             <div className="actions">
@@ -235,7 +358,9 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                 <tr>
                   <th>Fee Category</th>
                   <th>Amount</th>
+                  <th>Recurrence</th>
                   <th>Due Date</th>
+                  <th>Default</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -244,7 +369,9 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                   <tr key={s.id}>
                     <td>{s.feeCategoryName}</td>
                     <td>₹{s.amount.toLocaleString()}</td>
+                    <td><span className="badge">{s.recurrenceType}</span></td>
                     <td>{s.dueDate}</td>
+                    <td>{s.isDefault ? '✅' : '❌'}</td>
                     <td><span className="badge">{s.active ? 'Active' : 'Inactive'}</span></td>
                   </tr>
                 ))}
@@ -258,11 +385,11 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
         <div className="module-shell" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 20 }}>
           <div className="card">
             <h3>Students</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, maxHeight: '600px', overflowY: 'auto' }}>
               {students.map(s => (
                 <button
-                  key={s.id}
-                  className={`secondary ${selectedStudent?.id === s.id ? 'active' : ''}`}
+                  key={s.studentId || s.id}
+                  className={`secondary ${selectedStudent?.studentId === s.studentId || selectedStudent?.id === s.id ? 'active' : ''}`}
                   style={{ textAlign: 'left', padding: '12px' }}
                   onClick={() => handleSelectStudent(s)}
                 >
@@ -279,43 +406,111 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
             {selectedStudent ? (
               <>
                 <div className="card">
-                  <h3>Fees for {selectedStudent.firstName} {selectedStudent.lastName}</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                      <h3>Fees for {selectedStudent.firstName} {selectedStudent.lastName}</h3>
+                      <button className="primary small" onClick={() => setShowAssignForm(!showAssignForm)}>{showAssignForm ? 'Cancel' : 'Assign New Fee'}</button>
+                  </div>
+
+                  {showAssignForm && (
+                      <form onSubmit={handleAssignFee} style={{ marginBottom: 20, padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+                          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+                              <label style={{ flex: 1 }}>
+                                  Select Fee to Assign
+                                  <select value={assigningStructureId} onChange={e => setAssigningStructureId(e.target.value)} required>
+                                      <option value="">Select Structure</option>
+                                      {availableStructures.map(s => (
+                                          <option key={s.id} value={s.id}>{s.feeCategoryName} - ₹{s.amount.toLocaleString()}</option>
+                                      ))}
+                                  </select>
+                              </label>
+                              <button type="submit" className="primary" disabled={!assigningStructureId}>Assign</button>
+                          </div>
+                          {availableStructures.length === 0 && <p className="hint" style={{ marginTop: 8 }}>No additional fee structures available for this year.</p>}
+                      </form>
+                  )}
+
                   <div className="table-wrap">
                     <table className="module-table">
                       <thead>
                         <tr>
                           <th>Fee Head</th>
-                          <th>Amount Due</th>
-                          <th>Amount Paid</th>
+                          <th>Type</th>
+                          <th>Rate/Amount</th>
+                          <th>Total Due</th>
+                          <th>Discount</th>
+                          <th>Paid</th>
                           <th>Balance</th>
                           <th>Status</th>
                           <th>Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {studentFees.map(sf => (
+                        {studentFees.map(sf => {
+                            const balance = (sf.totalDueTillDate || sf.amountDue) - sf.amountPaid - (sf.discountAmount || 0);
+                            return (
                           <tr key={sf.id}>
                             <td>{sf.feeCategoryName}</td>
+                            <td><span className="hint">{sf.recurrenceType}</span></td>
                             <td>₹{sf.amountDue.toLocaleString()}</td>
+                            <td>₹{(sf.totalDueTillDate || sf.amountDue).toLocaleString()}</td>
+                            <td>
+                                {sf.discountAmount > 0 ? (
+                                    <span title={sf.discountReason} style={{ color: 'var(--gold)' }}>-₹{sf.discountAmount.toLocaleString()}</span>
+                                ) : (
+                                    <button className="secondary small" onClick={() => setShowDiscountForm(sf.id)}>Add</button>
+                                )}
+                            </td>
                             <td>₹{sf.amountPaid.toLocaleString()}</td>
-                            <td>₹{(sf.amountDue - sf.amountPaid).toLocaleString()}</td>
-                            <td><span className={`badge ${sf.status === 'PAID' ? 'active' : sf.status === 'PARTIAL' ? 'warning' : 'danger'}`}>{sf.status}</span></td>
+                            <td><strong style={{ color: balance > 0 ? 'var(--danger)' : '' }}>₹{balance.toLocaleString()}</strong></td>
+                            <td><span className={`status-pill ${sf.status.toLowerCase()}`}>{sf.status}</span></td>
                             <td>
                               {sf.status !== 'PAID' && (
-                                <button className="primary" style={{ padding: '6px 12px' }}>Collect</button>
+                                <button className="primary small" style={{ padding: '6px 12px' }} onClick={() => handleCollectClick(sf)}>Collect</button>
                               )}
                             </td>
                           </tr>
-                        ))}
+                        )})}
                         {studentFees.length === 0 && (
                           <tr>
-                            <td colSpan={6} style={{ textAlign: 'center' }}>No fees assigned to this student.</td>
+                            <td colSpan={9} style={{ textAlign: 'center' }}>No fees assigned to this student.</td>
                           </tr>
                         )}
                       </tbody>
                     </table>
                   </div>
                 </div>
+
+                {showDiscountForm && (
+                    <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                        <form className="card" style={{ width: '400px' }} onSubmit={handleApplyDiscount}>
+                            <h3>Apply Fee Waiver / Discount</h3>
+                            <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
+                                <label>
+                                    Discount Amount (₹)
+                                    <input type="number" value={discountForm.amount} onChange={e => setDiscountForm({ ...discountForm, amount: e.target.value })} required />
+                                </label>
+                                <label>
+                                    Reason
+                                    <input value={discountForm.reason} onChange={e => setDiscountForm({ ...discountForm, reason: e.target.value })} placeholder="e.g. Merit Scholarship" required />
+                                </label>
+                            </div>
+                            <div className="actions" style={{ marginTop: 20 }}>
+                                <button type="submit" className="primary">Apply Discount</button>
+                                <button type="button" className="secondary" onClick={() => setShowDiscountForm(null)}>Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+
+                {showCollectionModal && collectingFee && (
+                    <FeeCollectionModal
+                        student={selectedStudent}
+                        fee={collectingFee}
+                        schoolId={schoolId}
+                        onClose={() => { setShowCollectionModal(false); setCollectingFee(null); }}
+                        onSuccess={() => { handleSelectStudent(selectedStudent); fetchRecentPayments(schoolId).then(setRecentPayments); }}
+                    />
+                )}
               </>
             ) : (
               <div className="empty-state">
@@ -324,6 +519,65 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
             )}
           </div>
         </div>
+      )}
+
+      {activeTab === 'reports' && (
+          <div className="module-shell">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24 }}>
+                  <div className="card">
+                      <h3>Class-wise Review</h3>
+                      <div className="table-wrap">
+                          <table className="module-table">
+                              <thead>
+                                  <tr><th>Class</th><th>Expected</th><th>Collected</th><th>Pending</th></tr>
+                              </thead>
+                              <tbody>
+                                  {classReports.map(cr => (
+                                      <tr key={cr.classId} onClick={() => setSelectedClassId(cr.classId)} style={{ cursor: 'pointer', background: selectedClassId === cr.classId ? 'rgba(255,255,255,0.05)' : '' }}>
+                                          <td><strong>{cr.className}</strong></td>
+                                          <td>₹{cr.totalExpected.toLocaleString()}</td>
+                                          <td style={{ color: 'var(--accent)' }}>₹{cr.totalCollected.toLocaleString()}</td>
+                                          <td style={{ color: 'var(--danger)' }}>₹{cr.totalOutstanding.toLocaleString()}</td>
+                                      </tr>
+                                  ))}
+                              </tbody>
+                          </table>
+                      </div>
+                  </div>
+
+                  <div className="card">
+                      <h3>{selectedClassId ? `Student Details - ${classReports.find(c => c.classId === selectedClassId)?.className}` : 'Select a class to view details'}</h3>
+                      {selectedClassId ? (
+                          <div className="table-wrap">
+                            <table className="module-table">
+                               <thead>
+                                    <tr><th>Student</th><th>Expected</th><th>Paid</th><th>Discount</th><th>Balance</th><th>Status</th></tr>
+                                </thead>
+                                <tbody>
+                                    {studentReports.map(sr => (
+                                        <tr key={sr.studentId}>
+                                            <td>
+                                                <strong>{sr.studentName}</strong><br/>
+                                                <span className="hint">{sr.admissionNumber}</span>
+                                            </td>
+                                            <td>₹{sr.totalExpected.toLocaleString()}</td>
+                                            <td>₹{sr.totalCollected.toLocaleString()}</td>
+                                            <td>₹{sr.totalDiscounted.toLocaleString()}</td>
+                                            <td><strong>₹{sr.totalOutstanding.toLocaleString()}</strong></td>
+                                            <td><span className={`status-pill ${sr.status.toLowerCase()}`}>{sr.status}</span></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                          </div>
+                      ) : (
+                          <div className="empty-state">
+                              <p>Select a class from the left to drill down into student-wise fee status.</p>
+                          </div>
+                      )}
+                  </div>
+              </div>
+          </div>
       )}
     </section>
   );

@@ -3,6 +3,7 @@ package com.mgps.academic.service;
 import com.mgps.academic.dto.AcademicDtos.*;
 import com.mgps.academic.entity.*;
 import com.mgps.academic.repository.*;
+import com.mgps.common.exception.BusinessLogicException;
 import com.mgps.common.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +41,9 @@ public class AcademicStructureService {
     }
 
     public AcademicYearResponse createAcademicYear(AcademicYearRequest request) {
+        if (request.getSchoolId() == null) {
+            throw new BusinessLogicException("School ID is required");
+        }
         AcademicYear year = new AcademicYear(
             UUID.randomUUID(),
             request.getSchoolId(),
@@ -73,6 +77,9 @@ public class AcademicStructureService {
     }
 
     public AcademicClassResponse createAcademicClass(AcademicClassRequest request) {
+        if (request.getSchoolId() == null) {
+            throw new BusinessLogicException("School ID is required");
+        }
         UUID yearId = request.getAcademicYearId();
         if (yearId == null) {
             yearId = academicYearRepository.findBySchoolIdAndIsActiveTrue(request.getSchoolId())
@@ -102,6 +109,9 @@ public class AcademicStructureService {
     }
 
     public AcademicSimpleResponse createSection(AcademicSectionRequest request) {
+        if (request.getSchoolId() == null) {
+            throw new BusinessLogicException("School ID is required");
+        }
         AcademicSection section = new AcademicSection(
             UUID.randomUUID(),
             request.getSchoolId(),
@@ -123,6 +133,9 @@ public class AcademicStructureService {
     }
 
     public AcademicSimpleResponse createStream(AcademicStreamRequest request) {
+        if (request.getSchoolId() == null) {
+            throw new BusinessLogicException("School ID is required");
+        }
         AcademicStream stream = new AcademicStream(
             UUID.randomUUID(),
             request.getSchoolId(),
@@ -144,6 +157,9 @@ public class AcademicStructureService {
     }
 
     public AcademicSimpleResponse createSubject(AcademicSubjectRequest request) {
+        if (request.getSchoolId() == null) {
+            throw new BusinessLogicException("School ID is required");
+        }
         AcademicSubject subject = new AcademicSubject(
             UUID.randomUUID(),
             request.getSchoolId(),
@@ -166,6 +182,9 @@ public class AcademicStructureService {
     }
 
     public AcademicSimpleResponse createDepartment(AcademicDepartmentRequest request) {
+        if (request.getSchoolId() == null) {
+            throw new BusinessLogicException("School ID is required");
+        }
         AcademicDepartment department = new AcademicDepartment(
             UUID.randomUUID(),
             request.getSchoolId(),
@@ -187,6 +206,9 @@ public class AcademicStructureService {
     }
 
     public AcademicSimpleResponse createHouse(AcademicHouseRequest request) {
+        if (request.getSchoolId() == null) {
+            throw new BusinessLogicException("School ID is required");
+        }
         AcademicHouse house = new AcademicHouse(
             UUID.randomUUID(),
             request.getSchoolId(),

@@ -47,6 +47,12 @@ public class FeePayment {
     @Column(name = "processed_by")
     private UUID processedBy;
 
+    @Column(name = "month_from")
+    private Integer monthFrom;
+
+    @Column(name = "month_to")
+    private Integer monthTo;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -132,6 +138,22 @@ public class FeePayment {
 
     public void setProcessedBy(UUID processedBy) {
         this.processedBy = processedBy;
+    }
+
+    public Integer getMonthFrom() {
+        return monthFrom;
+    }
+
+    public void setMonthFrom(Integer monthFrom) {
+        this.monthFrom = monthFrom;
+    }
+
+    public Integer getMonthTo() {
+        return monthTo;
+    }
+
+    public void setMonthTo(Integer monthTo) {
+        this.monthTo = monthTo;
     }
 
     public LocalDateTime getCreatedAt() {

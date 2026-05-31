@@ -11,12 +11,14 @@ public class StudentFeeDTO {
     private String studentName;
     private UUID feeStructureId;
     private String feeCategoryName;
-    private BigDecimal amountDue;
+    private BigDecimal amountDue; // Monthly rate or One-time total
     private BigDecimal amountPaid;
     private String status;
     private LocalDate dueDate;
     private BigDecimal discountAmount;
     private String discountReason;
+    private String recurrenceType; // ONE_TIME, MONTHLY
+    private BigDecimal totalDueTillDate; // Calculated based on elapsed months for monthly
 
     public StudentFeeDTO() {
     }
@@ -115,5 +117,21 @@ public class StudentFeeDTO {
 
     public void setDiscountReason(String discountReason) {
         this.discountReason = discountReason;
+    }
+
+    public String getRecurrenceType() {
+        return recurrenceType;
+    }
+
+    public void setRecurrenceType(String recurrenceType) {
+        this.recurrenceType = recurrenceType;
+    }
+
+    public BigDecimal getTotalDueTillDate() {
+        return totalDueTillDate;
+    }
+
+    public void setTotalDueTillDate(BigDecimal totalDueTillDate) {
+        this.totalDueTillDate = totalDueTillDate;
     }
 }

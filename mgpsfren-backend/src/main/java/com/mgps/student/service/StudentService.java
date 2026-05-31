@@ -7,6 +7,8 @@ import com.mgps.academic.repository.AcademicClassRepository;
 import com.mgps.academic.repository.AcademicSectionRepository;
 import com.mgps.academic.repository.AcademicYearRepository;
 import com.mgps.common.exception.ResourceNotFoundException;
+import com.mgps.fee.entity.FeeStructure;
+import com.mgps.fee.service.FeeService;
 import com.mgps.student.dto.StudentDtos.*;
 import com.mgps.student.entity.*;
 import com.mgps.student.repository.StudentDocumentRepository;
@@ -33,19 +35,22 @@ public class StudentService {
     private final AcademicYearRepository academicYearRepository;
     private final AcademicClassRepository academicClassRepository;
     private final AcademicSectionRepository academicSectionRepository;
+    private final FeeService feeService;
 
     public StudentService(StudentRepository studentRepository,
                           StudentDocumentRepository documentRepository,
                           StudentAttendanceRepository attendanceRepository,
                           AcademicYearRepository academicYearRepository,
                           AcademicClassRepository academicClassRepository,
-                          AcademicSectionRepository academicSectionRepository) {
+                          AcademicSectionRepository academicSectionRepository,
+                          FeeService feeService) {
         this.studentRepository = studentRepository;
         this.documentRepository = documentRepository;
         this.attendanceRepository = attendanceRepository;
         this.academicYearRepository = academicYearRepository;
         this.academicClassRepository = academicClassRepository;
         this.academicSectionRepository = academicSectionRepository;
+        this.feeService = feeService;
     }
 
     public StudentResponse admitStudent(StudentAdmissionRequest request) {
@@ -88,7 +93,21 @@ public class StudentService {
             null
         );
 
-        return map(studentRepository.save(student));
+        Student saved = studentRepository.save(student);
+
+        // --- Automatic Fee Assignment ---
+        if (request.getFeeStructureIds() != null && !request.getFeeStructureIds().isEmpty()) {
+            for (UUID structureId : request.getFeeStructureIds()) {
+                feeService.assignFeeToStudent(saved.getId(), structureId);
+            }
+        } else {
+            List<FeeStructure> defaults = feeService.getDefaultStructures(request.getSchoolId(), yearId, request.getClassId());
+            for (FeeStructure fs : defaults) {
+                feeService.assignFeeToStudent(saved.getId(), fs.getId());
+            }
+        }
+
+        return map(saved);
     }
 
     public StudentResponse updateStudent(UUID studentId, StudentUpdateRequest request) {

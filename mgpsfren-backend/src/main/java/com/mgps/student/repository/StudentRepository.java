@@ -15,6 +15,7 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
     Optional<Student> findByAdmissionNumber(String admissionNumber);
     Optional<Student> findBySchoolIdAndAdmissionNumber(UUID schoolId, String admissionNumber);
     Page<Student> findBySchoolId(UUID schoolId, Pageable pageable);
+    List<Student> findByClassId(UUID classId);
     List<Student> findBySchoolIdAndClassId(UUID schoolId, UUID classId);
     List<Student> findBySchoolIdAndAcademicYearId(UUID schoolId, UUID academicYearId);
     Page<Student> findByStatus(StudentStatus status, Pageable pageable);

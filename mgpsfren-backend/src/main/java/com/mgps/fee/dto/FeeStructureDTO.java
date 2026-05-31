@@ -13,7 +13,9 @@ public class FeeStructureDTO {
     private String feeCategoryName;
     private BigDecimal amount;
     private LocalDate dueDate;
+    private Boolean isDefault;
     private Boolean isActive;
+    private String recurrenceType; // ONE_TIME, MONTHLY
 
     public FeeStructureDTO() {
     }
@@ -82,11 +84,27 @@ public class FeeStructureDTO {
         this.dueDate = dueDate;
     }
 
+    public Boolean getIsDefault() {
+        return isDefault;
+    }
+
+    public void setIsDefault(Boolean isDefault) {
+        this.isDefault = isDefault;
+    }
+
     public Boolean getActive() {
         return isActive;
     }
 
     public void setActive(Boolean active) {
         isActive = active;
+    }
+
+    public String getRecurrenceType() {
+        return recurrenceType;
+    }
+
+    public void setRecurrenceType(String recurrenceType) {
+        this.recurrenceType = recurrenceType;
     }
 }

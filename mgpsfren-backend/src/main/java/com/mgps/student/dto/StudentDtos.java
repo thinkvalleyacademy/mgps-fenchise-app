@@ -29,6 +29,7 @@ public final class StudentDtos {
         private String parentPhone;
         private String medicalInfo;
         private String photoUrl;
+        private List<UUID> feeStructureIds;
 
         public UUID getSchoolId() { return schoolId; }
         public void setSchoolId(UUID schoolId) { this.schoolId = schoolId; }
@@ -60,6 +61,8 @@ public final class StudentDtos {
         public void setMedicalInfo(String medicalInfo) { this.medicalInfo = medicalInfo; }
         public String getPhotoUrl() { return photoUrl; }
         public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
+        public List<UUID> getFeeStructureIds() { return feeStructureIds; }
+        public void setFeeStructureIds(List<UUID> feeStructureIds) { this.feeStructureIds = feeStructureIds; }
     }
 
     public static class StudentUpdateRequest {

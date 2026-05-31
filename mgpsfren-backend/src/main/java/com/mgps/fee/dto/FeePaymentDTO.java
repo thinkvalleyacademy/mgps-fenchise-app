@@ -15,6 +15,8 @@ public class FeePaymentDTO {
     private String receiptNumber;
     private String remarks;
     private UUID processedBy;
+    private Integer monthFrom;
+    private Integer monthTo;
 
     public FeePaymentDTO() {
     }
@@ -97,5 +99,21 @@ public class FeePaymentDTO {
 
     public void setProcessedBy(UUID processedBy) {
         this.processedBy = processedBy;
+    }
+
+    public Integer getMonthFrom() {
+        return monthFrom;
+    }
+
+    public void setMonthFrom(Integer monthFrom) {
+        this.monthFrom = monthFrom;
+    }
+
+    public Integer getMonthTo() {
+        return monthTo;
+    }
+
+    public void setMonthTo(Integer monthTo) {
+        this.monthTo = monthTo;
     }
 }

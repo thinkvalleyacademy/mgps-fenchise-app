@@ -40,8 +40,14 @@ public class FeeStructure {
     @Column(name = "due_date")
     private LocalDate dueDate;
 
+    @Column(name = "is_default")
+    private Boolean isDefault = false;
+
     @Column(name = "is_active")
     private Boolean isActive = true;
+
+    @Column(name = "recurrence_type", length = 20)
+    private String recurrenceType = "ONE_TIME";
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -110,12 +116,28 @@ public class FeeStructure {
         this.dueDate = dueDate;
     }
 
+    public Boolean getIsDefault() {
+        return isDefault;
+    }
+
+    public void setIsDefault(Boolean isDefault) {
+        this.isDefault = isDefault;
+    }
+
     public Boolean getActive() {
         return isActive;
     }
 
     public void setActive(Boolean active) {
         isActive = active;
+    }
+
+    public String getRecurrenceType() {
+        return recurrenceType;
+    }
+
+    public void setRecurrenceType(String recurrenceType) {
+        this.recurrenceType = recurrenceType;
     }
 
     public LocalDateTime getCreatedAt() {
