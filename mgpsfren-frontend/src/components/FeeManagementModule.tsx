@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import { fetchFeeCategories, createFeeCategory, fetchFeeStructures, createFeeStructure, fetchStudents, fetchStudentFees, processPayment, fetchAcademicYears, applyFeeDiscount, fetchSchoolFeeReport, fetchClassFeeReport, fetchStudentFeeReport, fetchClasses, assignFeeToStudent, fetchRecentPayments } from '../api';
 import FeeCollectionModal from './FeeCollectionModal';
 
@@ -85,6 +87,32 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
     } catch (err) {
       setError('Failed to load fee structures');
     }
+  }
+
+  function downloadReceipt(payment: any) {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('MGPS Franchise School', 105, 20, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text('Fee Receipt', 105, 30, { align: 'center' });
+    doc.line(20, 35, 190, 35);
+    doc.setFontSize(10);
+    doc.text(`Receipt No: ${payment.receiptNumber}`, 20, 45);
+    doc.text(`Date: ${new Date(payment.paymentDate).toLocaleDateString()}`, 150, 45);
+    doc.text(`Amount: ₹${payment.amountPaid.toLocaleString()}`, 20, 55);
+    doc.text(`Mode: ${payment.paymentMode}`, 20, 60);
+    if (payment.transactionId) {
+      doc.text(`Transaction ID: ${payment.transactionId}`, 20, 65);
+    }
+    if (payment.monthFrom || payment.monthTo) {
+      const fromMonth = payment.monthFrom ? String(payment.monthFrom) : 'N/A';
+      const toMonth = payment.monthTo ? String(payment.monthTo) : 'N/A';
+      doc.text(`Period: ${fromMonth} - ${toMonth}`, 20, 70);
+    }
+    doc.text(`Remarks: ${payment.remarks || 'N/A'}`, 20, 80);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Thank you for your payment.', 105, 100, { align: 'center' });
+    doc.save(`Receipt_${payment.receiptNumber}.pdf`);
   }
 
   async function handleCreateCategory(e: React.FormEvent) {
@@ -246,7 +274,7 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                 <div className="table-wrap">
                     <table className="module-table">
                         <thead>
-                            <tr><th>Date</th><th>Receipt</th><th>Amount</th><th>Mode</th><th>Remarks</th></tr>
+                            <tr><th>Date</th><th>Receipt</th><th>Amount</th><th>Mode</th><th>Remarks</th><th>Action</th></tr>
                         </thead>
                         <tbody>
                             {recentPayments.map((p, idx) => (
@@ -256,9 +284,14 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                                     <td><strong>₹{p.amountPaid.toLocaleString()}</strong></td>
                                     <td><span className="badge">{p.paymentMode}</span></td>
                                     <td className="hint">{p.remarks}</td>
+                                    <td>
+                                        <button className="secondary small" type="button" onClick={() => downloadReceipt(p)}>
+                                            Download
+                                        </button>
+                                    </td>
                                 </tr>
                             ))}
-                            {recentPayments.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center' }}>No recent payments found.</td></tr>}
+                            {recentPayments.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center' }}>No recent payments found.</td></tr>}
                         </tbody>
                     </table>
                 </div>

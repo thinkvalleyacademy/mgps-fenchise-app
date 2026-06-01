@@ -93,6 +93,11 @@ public class StaffService {
         return map(staffMemberRepository.save(member));
     }
 
+    public void deleteStaff(UUID staffId) {
+        getStaffEntity(staffId);
+        staffMemberRepository.deleteById(staffId);
+    }
+
     public StaffResponse getStaff(UUID staffId) {
         return map(getStaffEntity(staffId));
     }

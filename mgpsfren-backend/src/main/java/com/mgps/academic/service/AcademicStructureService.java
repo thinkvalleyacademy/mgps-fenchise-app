@@ -93,6 +93,7 @@ public class AcademicStructureService {
             yearId,
             request.getName(),
             request.getGradeLevel(),
+            request.getCode(),
             request.getDescription(),
             true,
             null,
@@ -123,12 +124,12 @@ public class AcademicStructureService {
             null
         );
         AcademicSection saved = academicSectionRepository.save(section);
-        return mapSimple(saved.getId(), saved.getSchoolId(), saved.getName(), saved.getIsActive(), saved.getCreatedAt());
+        return mapSection(saved);
     }
 
     public List<AcademicSimpleResponse> getSections(UUID classId) {
         return academicSectionRepository.findByClassId(classId).stream()
-            .map(section -> mapSimple(section.getId(), section.getSchoolId(), section.getName(), section.getIsActive(), section.getCreatedAt()))
+            .map(this::mapSection)
             .collect(Collectors.toList());
     }
 
@@ -166,18 +167,19 @@ public class AcademicStructureService {
             request.getClassId(),
             request.getName(),
             request.getCode(),
+            request.getSubjectType(),
             request.getDescription(),
             true,
             null,
             null
         );
         AcademicSubject saved = academicSubjectRepository.save(subject);
-        return mapSimple(saved.getId(), saved.getSchoolId(), saved.getName(), saved.getIsActive(), saved.getCreatedAt());
+        return mapSimple(saved.getId(), saved.getSchoolId(), saved.getName(), saved.getCode(), saved.getSubjectType(), saved.getIsActive(), saved.getCreatedAt());
     }
 
     public List<AcademicSimpleResponse> getSubjects(UUID classId) {
         return academicSubjectRepository.findByClassId(classId).stream()
-            .map(subject -> mapSimple(subject.getId(), subject.getSchoolId(), subject.getName(), subject.getIsActive(), subject.getCreatedAt()))
+            .map(subject -> mapSimple(subject.getId(), subject.getSchoolId(), subject.getName(), subject.getCode(), subject.getSubjectType(), subject.getIsActive(), subject.getCreatedAt()))
             .collect(Collectors.toList());
     }
 
@@ -248,8 +250,10 @@ public class AcademicStructureService {
         response.setSchoolId(academicClass.getSchoolId());
         response.setAcademicYearId(academicClass.getAcademicYearId());
         response.setName(academicClass.getName());
+        response.setCode(academicClass.getCode());
         response.setGradeLevel(academicClass.getGradeLevel());
         response.setDescription(academicClass.getDescription());
+        response.setSectionCount(academicSectionRepository.findByClassId(academicClass.getId()).size());
         response.setIsActive(academicClass.getIsActive());
         response.setCreatedAt(academicClass.getCreatedAt());
         response.setUpdatedAt(academicClass.getUpdatedAt());
@@ -261,6 +265,24 @@ public class AcademicStructureService {
         response.setId(id);
         response.setSchoolId(schoolId);
         response.setName(name);
+        response.setIsActive(isActive);
+        response.setCreatedAt(createdAt);
+        return response;
+    }
+
+    private AcademicSimpleResponse mapSection(AcademicSection section) {
+        AcademicSimpleResponse response = mapSimple(section.getId(), section.getSchoolId(), section.getName(), section.getIsActive(), section.getCreatedAt());
+        response.setCapacity(section.getCapacity());
+        return response;
+    }
+
+    private AcademicSimpleResponse mapSimple(UUID id, UUID schoolId, String name, String code, String subjectType, Boolean isActive, java.time.LocalDateTime createdAt) {
+        AcademicSimpleResponse response = new AcademicSimpleResponse();
+        response.setId(id);
+        response.setSchoolId(schoolId);
+        response.setName(name);
+        response.setCode(code);
+        response.setSubjectType(subjectType);
         response.setIsActive(isActive);
         response.setCreatedAt(createdAt);
         return response;

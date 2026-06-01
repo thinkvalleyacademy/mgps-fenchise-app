@@ -132,6 +132,14 @@ export async function fetchUsers(schoolId?: string): Promise<AuthProfile[]> {
   return response.content ?? [];
 }
 
+export async function updateUser(userId: string, payload: any): Promise<AuthProfile> {
+  return request(`/users/${userId}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function deleteUser(userId: string): Promise<void> {
+  return request(`/users/${userId}`, { method: 'DELETE' });
+}
+
 // Academic Structure
 export async function fetchAcademicYears(schoolId: string): Promise<any[]> {
   return request(`/academic/years?schoolId=${schoolId}`);
@@ -180,6 +188,18 @@ export async function fetchStudents(schoolId: string): Promise<any[]> {
   return response.content ?? [];
 }
 
+export async function updateStudent(studentId: string, payload: any): Promise<any> {
+  return request(`/students/${studentId}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function deleteStudent(studentId: string): Promise<void> {
+  return request(`/students/${studentId}`, { method: 'DELETE' });
+}
+
+export async function assignStudentClass(studentId: string, payload: { classId: string; sectionId: string }): Promise<any> {
+  return request(`/students/${studentId}/assign-class`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
 // Staff Management
 export async function onboardStaff(payload: any): Promise<any> {
   return request('/staff', { method: 'POST', body: JSON.stringify(payload) });
@@ -189,6 +209,14 @@ export async function fetchStaff(schoolId: string): Promise<any[]> {
   const response = await request<{ content?: any[] } | any[]>(`/staff?schoolId=${schoolId}`);
   if (Array.isArray(response)) return response;
   return response.content ?? [];
+}
+
+export async function updateStaff(staffId: string, payload: any): Promise<any> {
+  return request(`/staff/${staffId}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function deleteStaff(staffId: string): Promise<void> {
+  return request(`/staff/${staffId}`, { method: 'DELETE' });
 }
 
 // Fee Management

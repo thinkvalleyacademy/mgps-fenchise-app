@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/api.ts","./src/main.tsx","./src/types.ts","./src/vite-env.d.ts","./src/components/createschoolform.tsx","./src/components/feemanagementmodule.tsx","./src/components/loginmodule.tsx"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/api.ts","./src/main.tsx","./src/types.ts","./src/vite-env.d.ts","./src/components/createschoolform.tsx","./src/components/feecollectionmodal.tsx","./src/components/feemanagementmodule.tsx","./src/components/loginmodule.tsx"],"version":"5.9.3"}

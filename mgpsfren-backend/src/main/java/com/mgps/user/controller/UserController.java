@@ -57,6 +57,21 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(profile, "User status updated successfully"));
     }
 
+    @PutMapping("/{userId}")
+    @PreAuthorize("hasAuthority('USER_UPDATE')")
+    public ResponseEntity<ApiResponse<?>> updateUser(@PathVariable UUID userId,
+                                                     @RequestBody UserUpdateRequest request) {
+        UserProfile profile = userService.updateUser(userId, request);
+        return ResponseEntity.ok(ApiResponse.success(profile, "User updated successfully"));
+    }
+
+    @DeleteMapping("/{userId}")
+    @PreAuthorize("hasAuthority('USER_DELETE')")
+    public ResponseEntity<ApiResponse<?>> deleteUser(@PathVariable UUID userId) {
+        userService.deleteUser(userId);
+        return ResponseEntity.ok(ApiResponse.success(null, "User deleted successfully"));
+    }
+
     @PostMapping
     @PreAuthorize("hasAuthority('USER_CREATE')")
     public ResponseEntity<ApiResponse<?>> registerUser(@RequestBody RegisterUserRequest request) {

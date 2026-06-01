@@ -57,6 +57,7 @@ public final class AcademicDtos {
         private UUID academicYearId;
         private String name;
         private String gradeLevel;
+        private String code;
         private String description;
 
         public UUID getSchoolId() { return schoolId; }
@@ -67,6 +68,8 @@ public final class AcademicDtos {
         public void setName(String name) { this.name = name; }
         public String getGradeLevel() { return gradeLevel; }
         public void setGradeLevel(String gradeLevel) { this.gradeLevel = gradeLevel; }
+        public String getCode() { return code; }
+        public void setCode(String code) { this.code = code; }
         public String getDescription() { return description; }
         public void setDescription(String description) { this.description = description; }
     }
@@ -77,7 +80,9 @@ public final class AcademicDtos {
         private UUID academicYearId;
         private String name;
         private String gradeLevel;
+        private String code;
         private String description;
+        private Integer sectionCount;
         private Boolean isActive;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
@@ -92,8 +97,12 @@ public final class AcademicDtos {
         public void setName(String name) { this.name = name; }
         public String getGradeLevel() { return gradeLevel; }
         public void setGradeLevel(String gradeLevel) { this.gradeLevel = gradeLevel; }
+        public String getCode() { return code; }
+        public void setCode(String code) { this.code = code; }
         public String getDescription() { return description; }
         public void setDescription(String description) { this.description = description; }
+        public Integer getSectionCount() { return sectionCount; }
+        public void setSectionCount(Integer sectionCount) { this.sectionCount = sectionCount; }
         public Boolean getIsActive() { return isActive; }
         public void setIsActive(Boolean active) { isActive = active; }
         public LocalDateTime getCreatedAt() { return createdAt; }
@@ -122,6 +131,9 @@ public final class AcademicDtos {
         private UUID id;
         private UUID schoolId;
         private String name;
+        private String code;
+        private String subjectType;
+        private Integer capacity;
         private Boolean isActive;
         private LocalDateTime createdAt;
 
@@ -131,6 +143,12 @@ public final class AcademicDtos {
         public void setSchoolId(UUID schoolId) { this.schoolId = schoolId; }
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
+        public String getCode() { return code; }
+        public void setCode(String code) { this.code = code; }
+        public String getSubjectType() { return subjectType; }
+        public void setSubjectType(String subjectType) { this.subjectType = subjectType; }
+        public Integer getCapacity() { return capacity; }
+        public void setCapacity(Integer capacity) { this.capacity = capacity; }
         public Boolean getIsActive() { return isActive; }
         public void setIsActive(Boolean active) { isActive = active; }
         public LocalDateTime getCreatedAt() { return createdAt; }
@@ -158,6 +176,7 @@ public final class AcademicDtos {
         private UUID classId;
         private String name;
         private String code;
+        private String subjectType;
         private String description;
 
         public UUID getSchoolId() { return schoolId; }
@@ -168,6 +187,8 @@ public final class AcademicDtos {
         public void setName(String name) { this.name = name; }
         public String getCode() { return code; }
         public void setCode(String code) { this.code = code; }
+        public String getSubjectType() { return subjectType; }
+        public void setSubjectType(String subjectType) { this.subjectType = subjectType; }
         public String getDescription() { return description; }
         public void setDescription(String description) { this.description = description; }
     }

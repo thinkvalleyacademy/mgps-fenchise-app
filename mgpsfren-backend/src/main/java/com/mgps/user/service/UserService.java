@@ -11,6 +11,7 @@ import com.mgps.user.dto.UserDtos.RefreshRequest;
 import com.mgps.user.dto.UserDtos.RowResult;
 import com.mgps.user.dto.UserDtos.UserProfile;
 import com.mgps.user.dto.UserDtos.UserStatusRequest;
+import com.mgps.user.dto.UserDtos.UserUpdateRequest;
 import com.mgps.user.entity.AppUser;
 import com.mgps.user.entity.UserRole;
 import com.mgps.user.entity.UserStatus;
@@ -144,6 +145,23 @@ public class UserService {
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         user.setStatus(request.getStatus());
         return toProfile(appUserRepository.save(user));
+    }
+
+    public UserProfile updateUser(UUID userId, UserUpdateRequest request) {
+        AppUser user = appUserRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) user.setLastName(request.getLastName());
+        if (request.getEmail() != null) user.setEmail(request.getEmail().toLowerCase().trim());
+        if (request.getPhone() != null) user.setPhone(request.getPhone());
+        if (request.getRole() != null) user.setRole(request.getRole());
+        return toProfile(appUserRepository.save(user));
+    }
+
+    public void deleteUser(UUID userId) {
+        AppUser user = appUserRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        appUserRepository.deleteById(userId);
     }
 
     public BulkImportResult bulkImportUsers(MultipartFile file, UUID defaultSchoolId) {

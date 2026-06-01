@@ -290,6 +290,8 @@ public final class StudentDtos {
         private UUID academicYearId;
         private UUID classId;
         private UUID sectionId;
+        private String className;
+        private String sectionName;
         private LocalDate admissionDate;
         private LocalDate transferDate;
         private StudentStatus status;
@@ -330,6 +332,10 @@ public final class StudentDtos {
         public void setClassId(UUID classId) { this.classId = classId; }
         public UUID getSectionId() { return sectionId; }
         public void setSectionId(UUID sectionId) { this.sectionId = sectionId; }
+        public String getClassName() { return className; }
+        public void setClassName(String className) { this.className = className; }
+        public String getSectionName() { return sectionName; }
+        public void setSectionName(String sectionName) { this.sectionName = sectionName; }
         public LocalDate getAdmissionDate() { return admissionDate; }
         public void setAdmissionDate(LocalDate admissionDate) { this.admissionDate = admissionDate; }
         public LocalDate getTransferDate() { return transferDate; }

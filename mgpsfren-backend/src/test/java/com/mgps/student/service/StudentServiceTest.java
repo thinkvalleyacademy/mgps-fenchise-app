@@ -6,6 +6,7 @@ import com.mgps.academic.entity.AcademicYear;
 import com.mgps.academic.repository.AcademicClassRepository;
 import com.mgps.academic.repository.AcademicSectionRepository;
 import com.mgps.academic.repository.AcademicYearRepository;
+import com.mgps.fee.service.FeeService;
 import com.mgps.student.dto.StudentDtos.*;
 import com.mgps.student.entity.*;
 import com.mgps.student.repository.StudentDocumentRepository;
@@ -36,6 +37,7 @@ class StudentServiceTest {
     @Mock private AcademicYearRepository academicYearRepository;
     @Mock private AcademicClassRepository academicClassRepository;
     @Mock private AcademicSectionRepository academicSectionRepository;
+    @Mock private FeeService feeService;
 
     @InjectMocks
     private StudentService studentService;
@@ -68,6 +70,7 @@ class StudentServiceTest {
         when(academicSectionRepository.findById(sectionId)).thenReturn(Optional.of(section));
         when(studentRepository.existsByAdmissionNumber(any())).thenReturn(false);
         when(studentRepository.save(any(Student.class))).thenReturn(saved);
+        when(feeService.getDefaultStructures(schoolId, academicYearId, classId)).thenReturn(List.of());
 
         var response = studentService.admitStudent(request);
 

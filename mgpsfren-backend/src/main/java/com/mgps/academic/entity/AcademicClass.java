@@ -28,6 +28,9 @@ public class AcademicClass {
     @Column(name = "grade_level", length = 50)
     private String gradeLevel;
 
+    @Column(length = 50)
+    private String code;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 
@@ -47,11 +50,17 @@ public class AcademicClass {
 
     public AcademicClass(UUID id, UUID schoolId, UUID academicYearId, String name, String gradeLevel,
                          String description, Boolean isActive, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this(id, schoolId, academicYearId, name, gradeLevel, null, description, isActive, createdAt, updatedAt);
+    }
+
+    public AcademicClass(UUID id, UUID schoolId, UUID academicYearId, String name, String gradeLevel,
+                         String code, String description, Boolean isActive, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.schoolId = schoolId;
         this.academicYearId = academicYearId;
         this.name = name;
         this.gradeLevel = gradeLevel;
+        this.code = code;
         this.description = description;
         this.isActive = isActive != null ? isActive : Boolean.TRUE;
         this.createdAt = createdAt;
@@ -68,6 +77,8 @@ public class AcademicClass {
     public void setName(String name) { this.name = name; }
     public String getGradeLevel() { return gradeLevel; }
     public void setGradeLevel(String gradeLevel) { this.gradeLevel = gradeLevel; }
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
     public Boolean getIsActive() { return isActive; }

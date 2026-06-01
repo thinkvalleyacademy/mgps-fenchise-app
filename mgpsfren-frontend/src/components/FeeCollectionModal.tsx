@@ -27,18 +27,23 @@ export default function FeeCollectionModal({ student, fee, schoolId, onClose, on
     const [amountToPay, setAmountToPay] = useState<number>(balance);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [paymentResult, setPaymentResult] = useState<any>(null);
+    const monthsPaid = isMonthly ? Math.floor(fee.amountPaid / fee.amountDue) : 0;
 
     useEffect(() => {
         if (isMonthly) {
-            // Rough calculation of month index based on amount paid
-            // In a production app, we'd fetch "paid_up_to" from backend
-            const monthsPaid = Math.floor(fee.amountPaid / fee.amountDue);
-            setTillMonth(Math.min(monthsPaid, 11));
-            setAmountToPay(balance);
+            const nextMonth = Math.min(monthsPaid, 11);
+            setTillMonth(nextMonth);
+            setAmountToPay(fee.amountDue);
         } else {
             setAmountToPay(balance);
         }
     }, [fee, balance, isMonthly]);
+
+    useEffect(() => {
+        if (!isMonthly) return;
+        const monthsToPay = Math.max(1, tillMonth - monthsPaid + 1);
+        setAmountToPay(fee.amountDue * monthsToPay);
+    }, [fee.amountDue, isMonthly, monthsPaid, tillMonth]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -52,7 +57,7 @@ export default function FeeCollectionModal({ student, fee, schoolId, onClose, on
                 amountPaid: amountToPay,
                 paymentMode,
                 transactionId: paymentMode !== 'CASH' ? transactionId : null,
-                monthFrom: isMonthly ? 1 : null, // Simplified
+                monthFrom: isMonthly ? monthsPaid + 1 : null,
                 monthTo: isMonthly ? tillMonth + 1 : null,
                 remarks: isMonthly ? `Paid through ${MONTHS[tillMonth]}` : 'One-time payment'
             };
@@ -161,17 +166,17 @@ export default function FeeCollectionModal({ student, fee, schoolId, onClose, on
                                 type="number" 
                                 value={amountToPay} 
                                 onChange={e => setAmountToPay(parseFloat(e.target.value))} 
-                                max={balance} 
+                                max={isMonthly ? undefined : balance}
                                 required 
                             />
                         </label>
 
                         {isMonthly && (
                             <label>
-                                Covering Up To
+                                Pay Through
                                 <select value={tillMonth} onChange={e => setTillMonth(parseInt(e.target.value))}>
                                     {MONTHS.map((m, i) => (
-                                        <option key={m} value={i}>{m}</option>
+                                        <option key={m} value={i} disabled={i < monthsPaid}>{m}</option>
                                     ))}
                                 </select>
                             </label>

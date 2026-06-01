@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import CreateSchoolForm from './components/CreateSchoolForm';
 import LoginModule from './components/LoginModule';
 import FeeManagementModule from './components/FeeManagementModule';
-import { buildSchoolPreview, checkSuperAdminStatus, createSchool, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, updateSchool, deleteSchool, registerUser, fetchUsers, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, onboardStaff, fetchStaff, fetchFeeStructures } from './api';
+import { buildSchoolPreview, checkSuperAdminStatus, createSchool, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, updateSchool, deleteSchool, registerUser, fetchUsers, updateUser, deleteUser, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures } from './api';
 import type {
   AuthProfile,
   SchoolRegistrationPayload,
@@ -154,6 +154,7 @@ export default function App() {
   const [schoolUsers, setSchoolUsers] = useState<AuthProfile[]>([]);
   const [isUsersLoading, setIsUsersLoading] = useState(false);
   const [showUserForm, setShowUserForm] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [userForm, setUserForm] = useState({
     firstName: '',
     lastName: '',
@@ -437,7 +438,10 @@ export default function App() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                       <h3>School Users</h3>
                       {!showUserForm && (
-                        <button className="primary small" onClick={() => setShowUserForm(true)}>Add Admin User</button>
+                        <button className="primary small" onClick={() => {
+                          resetUserForm();
+                          setShowUserForm(true);
+                        }}>Add Admin User</button>
                       )}
                     </div>
 
@@ -458,15 +462,27 @@ export default function App() {
                           </label>
                           <label>
                             Password
-                            <input type="password" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} required />
+                            <input type="password" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} required={!editingUserId} disabled={Boolean(editingUserId)} placeholder={editingUserId ? 'Password unchanged' : ''} />
+                          </label>
+                          <label>
+                            Role
+                            <select value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value })}>
+                              <option value="SCHOOL_ADMIN">SCHOOL_ADMIN</option>
+                              <option value="STAFF">STAFF</option>
+                              <option value="TEACHER">TEACHER</option>
+                              <option value="STUDENT">STUDENT</option>
+                            </select>
                           </label>
                         </div>
                         {error && <p className="error">{error}</p>}
                         <div className="actions" style={{ marginTop: 16 }}>
                           <button type="submit" className="primary" disabled={isSubmitting}>
-                            {isSubmitting ? 'Creating...' : 'Create Admin'}
+                            {isSubmitting ? 'Saving...' : editingUserId ? 'Update User' : 'Create User'}
                           </button>
-                          <button type="button" className="secondary" onClick={() => setShowUserForm(false)}>Cancel</button>
+                          <button type="button" className="secondary" onClick={() => {
+                            resetUserForm();
+                            setShowUserForm(false);
+                          }}>Cancel</button>
                         </div>
                       </form>
                     ) : (
@@ -478,13 +494,14 @@ export default function App() {
                               <th>Email</th>
                               <th>Role</th>
                               <th>Status</th>
+                              <th>Actions</th>
                             </tr>
                           </thead>
                           <tbody>
                             {isUsersLoading ? (
-                              <tr><td colSpan={4}>Loading users...</td></tr>
+                              <tr><td colSpan={5}>Loading users...</td></tr>
                             ) : schoolUsers.length === 0 ? (
-                              <tr><td colSpan={4}>No users found for this school.</td></tr>
+                              <tr><td colSpan={5}>No users found for this school.</td></tr>
                             ) : (
                               schoolUsers.map(user => (
                                 <tr key={user.userId}>
@@ -492,6 +509,10 @@ export default function App() {
                                   <td>{user.email}</td>
                                   <td><span className="badge">{user.role}</span></td>
                                   <td><span className={`status-pill ${user.status.toLowerCase()}`}>{user.status}</span></td>
+                                  <td>
+                                    <button className="secondary small" type="button" onClick={() => handleEditUser(user)}>Edit</button>
+                                    <button className="secondary small error-text" type="button" onClick={() => handleDeleteUser(user.userId)}>Delete</button>
+                                  </td>
                                 </tr>
                               ))
                             )}
@@ -869,15 +890,52 @@ export default function App() {
     if (!selectedSchoolId) return;
     setIsSubmitting(true);
     try {
-      await registerUser({ ...userForm, schoolId: selectedSchoolId });
+      if (editingUserId) {
+        await updateUser(editingUserId, {
+          firstName: userForm.firstName,
+          lastName: userForm.lastName,
+          email: userForm.email,
+          role: userForm.role
+        });
+      } else {
+        await registerUser({ ...userForm, schoolId: selectedSchoolId });
+      }
       setShowUserForm(false);
-      setUserForm({ firstName: '', lastName: '', email: '', password: '', role: 'SCHOOL_ADMIN' });
+      resetUserForm();
       loadSchoolUsers(selectedSchoolId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to create user');
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleDeleteUser(userId: string) {
+    if (!window.confirm('Delete this user account?')) return;
+    if (!selectedSchoolId) return;
+    try {
+      await deleteUser(userId);
+      loadSchoolUsers(selectedSchoolId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to delete user');
+    }
+  }
+
+  function handleEditUser(user: AuthProfile) {
+    setEditingUserId(user.userId);
+    setUserForm({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || '',
+      password: '',
+      role: user.role || 'SCHOOL_ADMIN'
+    });
+    setShowUserForm(true);
+  }
+
+  function resetUserForm() {
+    setEditingUserId(null);
+    setUserForm({ firstName: '', lastName: '', email: '', password: '', role: 'SCHOOL_ADMIN' });
   }
 
   function handleInitiateEditSchool(schoolId: string) {
@@ -1138,14 +1196,14 @@ function StudentManagementModule({ schoolId }: { schoolId: string }) {
   const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     classId: '',
-    sectionId: '',
-    admissionNumber: ''
+    sectionId: ''
   });
 
   useEffect(() => {
@@ -1179,17 +1237,59 @@ function StudentManagementModule({ schoolId }: { schoolId: string }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await admitStudent({ 
-        ...form, 
-        schoolId, 
-        feeStructureIds: selectedFeeIds 
-      });
+      if (editingStudentId) {
+        await updateStudent(editingStudentId, {
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: form.phone
+        });
+      } else {
+        await admitStudent({
+          ...form,
+          schoolId,
+          feeStructureIds: selectedFeeIds
+        });
+      }
+
       setShowForm(false);
-      setForm({ firstName: '', lastName: '', email: '', phone: '', classId: '', sectionId: '', admissionNumber: '' });
+      resetStudentForm();
       setSelectedFeeIds([]);
       fetchStudents(schoolId).then(setStudents);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to admit student');
+      alert(err instanceof Error ? err.message : 'Failed to save student');
+    }
+  }
+
+  function resetStudentForm() {
+    setEditingStudentId(null);
+    setForm({ firstName: '', lastName: '', email: '', phone: '', classId: '', sectionId: '' });
+  }
+
+  function handleEditStudent(student: any) {
+    setEditingStudentId(student.studentId);
+    setShowForm(true);
+    setForm({
+      firstName: student.firstName || '',
+      lastName: student.lastName || '',
+      email: student.email || '',
+      phone: student.phone || '',
+      classId: student.classId || '',
+      sectionId: student.sectionId || ''
+    });
+
+    if (student.classId) {
+      fetchSections(student.classId).then(setSections);
+    }
+  }
+
+  async function handleDeleteStudent(studentId: string) {
+    if (!window.confirm('Delete student record? This cannot be undone.')) return;
+    try {
+      await deleteStudent(studentId);
+      fetchStudents(schoolId).then(setStudents);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete student');
     }
   }
 
@@ -1204,7 +1304,14 @@ function StudentManagementModule({ schoolId }: { schoolId: string }) {
           <p className="section-label">Student Management</p>
           <h2>Student Directory</h2>
         </div>
-        <button className="primary small" onClick={() => setShowForm(!showForm)}>{showForm ? 'Cancel' : 'New Admission'}</button>
+        <button className="primary small" onClick={() => {
+          if (showForm) {
+            resetStudentForm();
+            setShowForm(false);
+          } else {
+            setShowForm(true);
+          }
+        }}>{showForm ? 'Cancel' : 'New Admission'}</button>
       </div>
 
       {showForm && (
@@ -1214,22 +1321,30 @@ function StudentManagementModule({ schoolId }: { schoolId: string }) {
             <label>Last Name <input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} required /></label>
             <label>Email <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required /></label>
             <label>Phone <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></label>
-            <label>Admission No <input value={form.admissionNumber} onChange={e => setForm({ ...form, admissionNumber: e.target.value })} required /></label>
-            <label>Class 
-              <select value={form.classId} onChange={e => setForm({ ...form, classId: e.target.value })} required>
-                <option value="">Select Class</option>
-                {classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
-              </select>
-            </label>
-            <label>Section 
-              <select value={form.sectionId} onChange={e => setForm({ ...form, sectionId: e.target.value })} required>
-                <option value="">Select Section</option>
-                {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </label>
+            {!editingStudentId && (
+              <label>Class
+                <select value={form.classId} onChange={e => setForm({ ...form, classId: e.target.value })} required>
+                  <option value="">Select Class</option>
+                  {classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
+                </select>
+              </label>
+            )}
+            {!editingStudentId && (
+              <label>Section
+                <select value={form.sectionId} onChange={e => setForm({ ...form, sectionId: e.target.value })} required>
+                  <option value="">Select Section</option>
+                  {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </label>
+            )}
+            {editingStudentId && (
+              <div style={{ gridColumn: '1 / -1', padding: '12px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 8 }}>
+                <p className="hint">Admission number and class/section cannot be changed from this quick edit form.</p>
+              </div>
+            )}
           </div>
 
-          {form.classId && availableFees.length > 0 && (
+          {form.classId && availableFees.length > 0 && !editingStudentId && (
             <div style={{ marginTop: 16 }}>
               <p className="section-label">Applicable Fees</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginTop: 8 }}>
@@ -1256,28 +1371,34 @@ function StudentManagementModule({ schoolId }: { schoolId: string }) {
               </div>
           )}
 
-          <button type="submit" className="primary" style={{ marginTop: 24 }}>Confirm Admission</button>
+          <button type="submit" className="primary" style={{ marginTop: 24 }}>
+            {editingStudentId ? 'Update Student' : 'Confirm Admission'}
+          </button>
         </form>
       )}
 
       <div className="table-wrap">
         <table className="module-table">
           <thead>
-            <tr><th>Adm No</th><th>Name</th><th>Class</th><th>Email</th><th>Status</th></tr>
+            <tr><th>Adm No</th><th>Name</th><th>Class</th><th>Email</th><th>Status</th><th>Actions</th></tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5}>Loading...</td></tr>
+              <tr><td colSpan={6}>Loading...</td></tr>
             ) : students.length === 0 ? (
-              <tr><td colSpan={5}>No students enrolled.</td></tr>
+              <tr><td colSpan={6}>No students enrolled.</td></tr>
             ) : (
               students.map(s => (
                 <tr key={s.studentId}>
                   <td>{s.admissionNumber}</td>
                   <td>{s.firstName} {s.lastName}</td>
-                  <td>{s.className} - {s.sectionName}</td>
+                  <td>{s.className || 'Unassigned'}{s.sectionName ? ` - ${s.sectionName}` : ''}</td>
                   <td>{s.email}</td>
                   <td><span className="status-pill active">{s.status || 'ACTIVE'}</span></td>
+                  <td>
+                    <button className="secondary small" type="button" onClick={() => handleEditStudent(s)}>Edit</button>
+                    <button className="secondary small error-text" type="button" onClick={() => handleDeleteStudent(s.studentId)} style={{ marginLeft: 8 }}>Delete</button>
+                  </td>
                 </tr>
               ))
             )}
@@ -1292,13 +1413,14 @@ function StaffManagementModule({ schoolId }: { schoolId: string }) {
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
-    employeeId: '',
-    role: 'TEACHER',
+    payrollEmployeeId: '',
+    designation: 'TEACHER',
     joiningDate: new Date().toISOString().split('T')[0]
   });
 
@@ -1309,12 +1431,55 @@ function StaffManagementModule({ schoolId }: { schoolId: string }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await onboardStaff({ ...form, schoolId });
+      if (editingStaffId) {
+        await updateStaff(editingStaffId, {
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: form.phone,
+          designation: form.designation,
+          payrollEmployeeId: form.payrollEmployeeId
+        });
+      } else {
+        await onboardStaff({
+          ...form,
+          schoolId
+        });
+      }
       setShowForm(false);
-      setForm({ firstName: '', lastName: '', email: '', phone: '', employeeId: '', role: 'TEACHER', joiningDate: new Date().toISOString().split('T')[0] });
+      resetStaffForm();
       fetchStaff(schoolId).then(setStaff);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to onboard staff');
+      alert(err instanceof Error ? err.message : 'Failed to save staff');
+    }
+  }
+
+  function resetStaffForm() {
+    setEditingStaffId(null);
+    setForm({ firstName: '', lastName: '', email: '', phone: '', payrollEmployeeId: '', designation: 'TEACHER', joiningDate: new Date().toISOString().split('T')[0] });
+  }
+
+  function handleEditStaff(member: any) {
+    setEditingStaffId(member.staffId);
+    setShowForm(true);
+    setForm({
+      firstName: member.firstName || '',
+      lastName: member.lastName || '',
+      email: member.email || '',
+      phone: member.phone || '',
+      payrollEmployeeId: member.payrollEmployeeId || '',
+      designation: member.designation || 'TEACHER',
+      joiningDate: member.joiningDate ? new Date(member.joiningDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    });
+  }
+
+  async function handleDeleteStaff(staffId: string) {
+    if (!window.confirm('Delete this staff member? This will remove the staff record.')) return;
+    try {
+      await deleteStaff(staffId);
+      fetchStaff(schoolId).then(setStaff);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete staff');
     }
   }
 
@@ -1325,7 +1490,14 @@ function StaffManagementModule({ schoolId }: { schoolId: string }) {
           <p className="section-label">Staff Management</p>
           <h2>Staff Directory</h2>
         </div>
-        <button className="primary small" onClick={() => setShowForm(!showForm)}>{showForm ? 'Cancel' : 'Onboard Staff'}</button>
+        <button className="primary small" onClick={() => {
+          if (showForm) {
+            resetStaffForm();
+            setShowForm(false);
+          } else {
+            setShowForm(true);
+          }
+        }}>{showForm ? 'Cancel' : 'Onboard Staff'}</button>
       </div>
 
       {showForm && (
@@ -1335,9 +1507,9 @@ function StaffManagementModule({ schoolId }: { schoolId: string }) {
             <label>Last Name <input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} required /></label>
             <label>Email <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required /></label>
             <label>Phone <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></label>
-            <label>Employee ID <input value={form.employeeId} onChange={e => setForm({ ...form, employeeId: e.target.value })} required /></label>
-            <label>Role 
-              <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} required>
+            <label>Payroll ID (optional) <input value={form.payrollEmployeeId} onChange={e => setForm({ ...form, payrollEmployeeId: e.target.value })} /></label>
+            <label>Designation
+              <select value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} required>
                 <option value="TEACHER">TEACHER</option>
                 <option value="PRINCIPAL">PRINCIPAL</option>
                 <option value="STAFF">STAFF</option>
@@ -1346,28 +1518,39 @@ function StaffManagementModule({ schoolId }: { schoolId: string }) {
             </label>
             <label>Joining Date <input type="date" value={form.joiningDate} onChange={e => setForm({ ...form, joiningDate: e.target.value })} required /></label>
           </div>
-          <button type="submit" className="primary" style={{ marginTop: 12 }}>Complete Onboarding</button>
+          {editingStaffId && (
+            <div style={{ marginTop: 12, padding: 12, background: 'rgba(255,255,255,0.04)', borderRadius: 8 }}>
+              <p className="hint">Employee code is generated automatically by the backend and cannot be changed here.</p>
+            </div>
+          )}
+          <button type="submit" className="primary" style={{ marginTop: 12 }}>
+            {editingStaffId ? 'Update Staff' : 'Complete Onboarding'}
+          </button>
         </form>
       )}
 
       <div className="table-wrap">
         <table className="module-table">
           <thead>
-            <tr><th>Emp ID</th><th>Name</th><th>Role</th><th>Email</th><th>Joining Date</th></tr>
+            <tr><th>Emp ID</th><th>Name</th><th>Designation</th><th>Email</th><th>Joining Date</th><th>Actions</th></tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5}>Loading...</td></tr>
+              <tr><td colSpan={6}>Loading...</td></tr>
             ) : staff.length === 0 ? (
-              <tr><td colSpan={5}>No staff onboarded.</td></tr>
+              <tr><td colSpan={6}>No staff onboarded.</td></tr>
             ) : (
               staff.map(s => (
                 <tr key={s.staffId}>
-                  <td>{s.employeeId}</td>
+                  <td>{s.employeeCode || s.employeeId}</td>
                   <td>{s.firstName} {s.lastName}</td>
-                  <td><span className="badge">{s.role}</span></td>
+                  <td><span className="badge">{s.designation || s.role || 'STAFF'}</span></td>
                   <td>{s.email}</td>
                   <td>{formatDate(s.joiningDate)}</td>
+                  <td>
+                    <button className="secondary small" type="button" onClick={() => handleEditStaff(s)}>Edit</button>
+                    <button className="secondary small error-text" type="button" onClick={() => handleDeleteStaff(s.staffId)} style={{ marginLeft: 8 }}>Delete</button>
+                  </td>
                 </tr>
               ))
             )}
@@ -1519,7 +1702,7 @@ function ClassManagementModule({ schoolId }: { schoolId: string }) {
                 <tr key={c.classId}>
                   <td>{c.name}</td>
                   <td>{c.code}</td>
-                  <td>{c.sections?.length || 0} sections</td>
+                  <td>{c.sectionCount ?? 0} sections</td>
                 </tr>
               ))
             )}
@@ -1603,7 +1786,7 @@ function SectionManagementModule({ schoolId }: { schoolId: string }) {
               sections.map(s => (
                 <tr key={s.id}>
                   <td>{s.name}</td>
-                  <td>{s.capacity} students</td>
+                  <td>{s.capacity ?? 0}</td>
                 </tr>
               ))
             )}

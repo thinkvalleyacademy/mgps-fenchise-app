@@ -28,6 +28,9 @@ public class AcademicSubject {
     @Column(length = 50)
     private String code;
 
+    @Column(name = "subject_type", length = 50)
+    private String subjectType;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 
@@ -47,11 +50,17 @@ public class AcademicSubject {
 
     public AcademicSubject(UUID id, UUID schoolId, UUID classId, String name, String code, String description,
                            Boolean isActive, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this(id, schoolId, classId, name, code, null, description, isActive, createdAt, updatedAt);
+    }
+
+    public AcademicSubject(UUID id, UUID schoolId, UUID classId, String name, String code, String subjectType, String description,
+                           Boolean isActive, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.schoolId = schoolId;
         this.classId = classId;
         this.name = name;
         this.code = code;
+        this.subjectType = subjectType;
         this.description = description;
         this.isActive = isActive != null ? isActive : Boolean.TRUE;
         this.createdAt = createdAt;
@@ -68,6 +77,8 @@ public class AcademicSubject {
     public void setName(String name) { this.name = name; }
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }
+    public String getSubjectType() { return subjectType; }
+    public void setSubjectType(String subjectType) { this.subjectType = subjectType; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
     public Boolean getIsActive() { return isActive; }

@@ -43,6 +43,13 @@ public class StudentController {
         return ResponseEntity.ok(ApiResponse.success(studentService.updateStudent(studentId, request), "Student updated successfully"));
     }
 
+    @DeleteMapping("/{studentId}")
+    @PreAuthorize("hasAuthority('STUDENT_MANAGE')")
+    public ResponseEntity<ApiResponse<?>> deleteStudent(@PathVariable UUID studentId) {
+        studentService.deleteStudent(studentId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Student deleted successfully"));
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('STUDENT_MANAGE')")
     public ResponseEntity<ApiResponse<?>> listStudents(@RequestParam UUID schoolId,

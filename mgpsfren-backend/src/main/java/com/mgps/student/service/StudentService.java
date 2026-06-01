@@ -116,6 +116,11 @@ public class StudentService {
         return map(studentRepository.save(student));
     }
 
+    public void deleteStudent(UUID studentId) {
+        getStudentEntity(studentId);
+        studentRepository.deleteById(studentId);
+    }
+
     public StudentResponse getStudent(UUID studentId) {
         return map(getStudentEntity(studentId));
     }
@@ -281,6 +286,16 @@ public class StudentService {
         response.setAcademicYearId(student.getAcademicYearId());
         response.setClassId(student.getClassId());
         response.setSectionId(student.getSectionId());
+        if (student.getClassId() != null) {
+            academicClassRepository.findById(student.getClassId())
+                .map(AcademicClass::getName)
+                .ifPresent(response::setClassName);
+        }
+        if (student.getSectionId() != null) {
+            academicSectionRepository.findById(student.getSectionId())
+                .map(AcademicSection::getName)
+                .ifPresent(response::setSectionName);
+        }
         response.setAdmissionDate(student.getAdmissionDate());
         response.setTransferDate(student.getTransferDate());
         response.setStatus(student.getStatus());

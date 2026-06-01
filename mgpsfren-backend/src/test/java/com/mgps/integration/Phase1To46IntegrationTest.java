@@ -8,6 +8,11 @@ import com.mgps.academic.entity.TimetableEntry;
 import com.mgps.academic.repository.*;
 import com.mgps.academic.service.AcademicStructureService;
 import com.mgps.academic.service.TimetableService;
+import com.mgps.fee.repository.FeeCategoryRepository;
+import com.mgps.fee.repository.FeePaymentRepository;
+import com.mgps.fee.repository.FeeStructureRepository;
+import com.mgps.fee.repository.StudentFeeRepository;
+import com.mgps.fee.service.FeeService;
 import com.mgps.staff.dto.StaffDtos.*;
 import com.mgps.staff.entity.*;
 import com.mgps.staff.repository.*;
@@ -64,6 +69,7 @@ class Phase1To46IntegrationTest {
     @Autowired private StudentRepository studentRepository;
     @Autowired private StudentDocumentRepository studentDocumentRepository;
     @Autowired private StudentAttendanceRepository studentAttendanceRepository;
+    @Autowired private FeeStructureRepository feeStructureRepository;
 
     @Autowired private StaffMemberRepository staffMemberRepository;
     @Autowired private StaffAttendanceRepository staffAttendanceRepository;
@@ -149,6 +155,7 @@ class Phase1To46IntegrationTest {
             savedStudent.set(saved);
             return saved;
         });
+        when(feeStructureRepository.findBySchoolIdAndAcademicYearId(schoolId, academicYearId)).thenReturn(List.of());
         when(studentAttendanceRepository.findByStudentIdAndAttendanceDate(any(), any())).thenReturn(Optional.empty());
         when(studentAttendanceRepository.save(any(StudentAttendance.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(studentAttendanceRepository.findByStudentId(any())).thenReturn(List.of(
@@ -301,6 +308,11 @@ class Phase1To46IntegrationTest {
         @Bean StudentRepository studentRepository() { return mock(StudentRepository.class); }
         @Bean StudentDocumentRepository studentDocumentRepository() { return mock(StudentDocumentRepository.class); }
         @Bean StudentAttendanceRepository studentAttendanceRepository() { return mock(StudentAttendanceRepository.class); }
+        @Bean FeeCategoryRepository feeCategoryRepository() { return mock(FeeCategoryRepository.class); }
+        @Bean FeeStructureRepository feeStructureRepository() { return mock(FeeStructureRepository.class); }
+        @Bean StudentFeeRepository studentFeeRepository() { return mock(StudentFeeRepository.class); }
+        @Bean FeePaymentRepository feePaymentRepository() { return mock(FeePaymentRepository.class); }
+        @Bean FeeService feeService() { return new FeeService(); }
 
         @Bean StaffMemberRepository staffMemberRepository() { return mock(StaffMemberRepository.class); }
         @Bean StaffAttendanceRepository staffAttendanceRepository() { return mock(StaffAttendanceRepository.class); }

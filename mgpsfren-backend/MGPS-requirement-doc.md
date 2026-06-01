@@ -588,3 +588,14 @@ The architecture is designed to:
 
 This system will serve as a strong foundation for a modern educational ERP platform.
 
+Issues and fixes:
+
+2. section data not showing but default showing 0 sections - Fixed 
+    also capacity showing as students instead of correct value.  - Fixed 
+3. in Subject Management , in Class subjects subject code and type not showing- Fixed
+4. in Student Management, class not showing - Fixed 
+5. on new admission Admission No should be taken from frontend , it should be auto generate from backend. Same for "Employee ID"  - Fixed 
+6. admin should have option to delete, update og students, staff and users - Fixed
+7. EMP ID not showing in Staff Directory list  - Fixed 
+8. download of recipt not working and should have option to dowload it again. - Fixed 
+9. Should have option to pay advance of montly fee. - Fixed

@@ -43,6 +43,13 @@ public class StaffController {
         return ResponseEntity.ok(ApiResponse.success(staffService.updateStaff(staffId, request), "Staff updated successfully"));
     }
 
+    @DeleteMapping("/{staffId}")
+    @PreAuthorize("hasAuthority('STAFF_MANAGE')")
+    public ResponseEntity<ApiResponse<?>> deleteStaff(@PathVariable UUID staffId) {
+        staffService.deleteStaff(staffId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Staff member deleted successfully"));
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('STAFF_MANAGE')")
     public ResponseEntity<ApiResponse<?>> listStaff(@RequestParam UUID schoolId,
