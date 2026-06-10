@@ -34,7 +34,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create  # Create tables from JPA entities
+      ddl-auto: validate  # Create tables from JPA entities
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
