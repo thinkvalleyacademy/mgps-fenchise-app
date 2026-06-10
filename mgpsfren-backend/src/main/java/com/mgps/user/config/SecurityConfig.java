@@ -46,6 +46,8 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/schools",
                     "/schools/**",
+                    "/subscription-plans",
+                    "/subscription-plans/**",
                     "/users",
                     "/users/**"
                 ).permitAll()  // Public endpoints for testing

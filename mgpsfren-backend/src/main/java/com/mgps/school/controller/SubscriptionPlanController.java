@@ -5,7 +5,6 @@ import com.mgps.school.entity.SubscriptionPlan;
 import com.mgps.school.repository.SubscriptionPlanRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,7 +18,6 @@ import org.slf4j.LoggerFactory;
  */
 @RestController
 @RequestMapping("/subscription-plans")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:4200", "http://localhost:8080"})
 public class SubscriptionPlanController {
 
     private static final Logger log = LoggerFactory.getLogger(SubscriptionPlanController.class);
