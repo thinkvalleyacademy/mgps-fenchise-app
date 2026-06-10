@@ -19,7 +19,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - mgps-network
+      - mgps-shared
     restart: unless-stopped
 
   pgadmin:
@@ -45,7 +45,7 @@ services:
     depends_on:
       - postgres
     networks:
-      - mgps-network
+      - mgps-shared
     restart: unless-stopped
     user: root:root
 
@@ -56,5 +56,6 @@ volumes:
     driver: local
 
 networks:
-  mgps-network:
-    driver: bridge
+  mgps-shared:
+    name: mgps-shared
+    external: true
