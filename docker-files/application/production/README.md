@@ -12,6 +12,11 @@ These files are ready to copy to your Linux server under /home/mgps01/mgpsv2/dev
 ## Steps on the server
 1. Copy this folder to /home/mgps01/mgpsv2/dev.
 2. Rename .env.example to .env and update the values.
+3. Run the helper script:
+   ```bash
+   cd /home/mgps01/mgpsv2/dev
+   ./deploy.sh
+   ```
    - Replace YOUR_SERVER_IP with the server public IP or hostname.
    - Set a strong JWT_SECRET value.
 3. Run:

@@ -14,7 +14,7 @@ services:
 
   backend:
     build:
-      context: ../../..
+      context: ${CODE_DIR:-/home/mgps01/mgpsv2/code/mgpsfren/mgps-fenchise-app}
       dockerfile: mgpsfren-backend/Dockerfile
     container_name: mgps-backend
     restart: unless-stopped
@@ -32,7 +32,7 @@ services:
 
   frontend:
     build:
-      context: ../../..
+      context: ${CODE_DIR:-/home/mgps01/mgpsv2/code/mgpsfren/mgps-fenchise-app}
       dockerfile: mgpsfren-frontend/Dockerfile
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
