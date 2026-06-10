@@ -9,6 +9,7 @@ services:
     networks:
       - mgps-shared
     environment:
+      SPRING_PROFILES_ACTIVE: dev
       SERVER_PORT: 8080
       SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-mgps_master}
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-postgres}
@@ -29,6 +30,8 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    networks:
+      - mgps-shared
     expose:
       - "80"
 
@@ -39,6 +42,8 @@ services:
     depends_on:
       - frontend
       - backend
+    networks:
+      - mgps-shared
     ports:
       - "${PROXY_PORT:-6080}:80"
     volumes:
