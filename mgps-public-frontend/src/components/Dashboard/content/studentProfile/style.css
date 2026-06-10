@@ -1,0 +1,83 @@
+
+.modal_navbar{
+    padding: 0;
+    margin: 0;
+    min-height: 70px;
+}
+.modal_nav {
+  float: left;
+display: flex;
+flex-direction: row;
+align-items: center;
+}
+
+
+.modal-user-name {
+  display: block;
+  color: black;
+  margin-left: 20px;
+  font-size: 25px;
+  font-weight: 600;
+}
+.modal-position {
+  display: block;
+  color: blue;
+  font-size: 20px;
+  font-weight: 600;
+  margin-left: 30px;
+  margin-top: -3px;
+}
+
+.modal-overview {
+    color: red;
+    margin-right: 50px;
+    font-size: 17px;
+    margin-left: 90px;
+    
+  }
+  .modal-information {
+    color: blue;
+    font-size: 15px;
+    margin-left: 20px;
+  }
+
+  .modal-guadian-name {
+    display: inline;
+    color: black;
+    margin-left: 20px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .modal-relation {
+    display: block;
+    color: blue;
+    font-size: 14px;
+    margin-left: 20px;
+  
+    margin-top: 3px;
+  }
+
+  .img-guadians{
+    border-radius: 50%;
+    height: 60px;
+    width: 60px;
+  }
+
+  .modal_content {
+    flex-grow: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+
+.modal-card {
+    width: 100%;
+    height: 80px;
+    background-color: white;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 0px;
+    display: inline;
+    
+  }
+  

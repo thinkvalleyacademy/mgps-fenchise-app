@@ -1,0 +1,21 @@
+.structForm {
+    padding: 20px;
+    background-color: white;
+}
+
+.labelStyle {
+    font-size: 1.4rem;
+}
+
+.feeForm {
+    margin-left: 3.5rem;
+
+}
+
+.custom-button {
+    border-radius: 12px; /* Additional rounding if needed */
+  }
+  
+
+
+

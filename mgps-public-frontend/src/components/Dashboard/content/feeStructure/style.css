@@ -1,0 +1,12 @@
+.FeeCollectionHeading{
+    padding: 20px;
+    margin-left: 20px;
+    font-weight: 700;
+    font-size: 35px;
+}
+.collectionContainer{
+    max-width: 100%;
+}
+.collectionTable{
+    color: white;
+}

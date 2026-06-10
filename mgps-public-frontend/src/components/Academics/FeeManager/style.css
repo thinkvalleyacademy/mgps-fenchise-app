@@ -1,0 +1,45 @@
+/* Unique class names for styling */
+.table-container-custom {
+    max-width: 100%;
+    margin: 10px auto;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    overflow: hidden;
+    background-color: #fff;
+}
+
+.table-custom {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-custom thead {
+    background-color: #343a40;
+    color: #fff;
+}
+
+.table-custom th,
+.table-custom td {
+    padding: 12px 15px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+.table-custom tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.table-custom tbody tr:hover {
+    background-color: #e9ecef;
+}
+
+.summary-custom {
+    margin-top: 20px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #495057;
+}
+
+.summary-custom span {
+    color: #007bff;
+}

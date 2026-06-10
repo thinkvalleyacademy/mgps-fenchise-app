@@ -1,0 +1,165 @@
+.myLogo {
+  font-size: 4.5vw; /* Default size relative to viewport width */
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 900;
+  cursor: pointer;
+  text-decoration: none !important;
+
+  --x-offset: -0.0625em;
+  --y-offset: 0.0625em;
+  --stroke: 0.025em;
+  --background-color: tomato;
+  --stroke-color: lightblue;
+
+  text-shadow:
+    var(--x-offset) var(--y-offset) 0px var(--background-color),
+    calc(var(--x-offset) - var(--stroke)) calc(var(--y-offset) + var(--stroke)) 0px var(--stroke-color);
+  font-size: min(2.5vw, 36px); /* Ensures font size is at least 36px */
+}
+
+@supports (text-shadow: 1px 1px 1px 1px black) {
+  .logo {
+    text-shadow:
+      var(--x-offset) var(--y-offset) 0px 0px var(--background-color),
+      var(--x-offset) var(--y-offset) var(--stroke) 0px var(--stroke-color);
+  }
+}
+
+.myLogo:hover {
+  color: #ffffff;
+ 
+}
+
+.home-nav-link{
+  position: relative;
+  font-size: 1.5em;
+  cursor: pointer;
+  color: #ffffff;
+  text-decoration: none;
+  padding: 6px 15px;
+  transition: .5s;
+  font-weight: 700;
+  text-decoration: none !important;
+  border: none;
+}
+
+.nav-link.active {
+  color: #EB5B00;
+  background-color: transparent;
+
+}
+
+.home-nav-link:hover {
+  color: #EB5B00;
+  text-decoration: none !important;
+}
+
+
+
+
+.home-nav-toggler{
+  color: #ff8000;
+  font-size: 30px;
+}
+
+.home_nav {
+  background: linear-gradient(90deg, #FC4C86 0%, #FFD700 80%, #ffd334 100%);
+}
+
+
+
+.home-logo-img {
+  height: 15vw; /* Default height relative to viewport width */
+  max-height: 100px; /* Ensure it does not exceed a certain height */
+  width: auto; /* Maintain aspect ratio */
+  height: min(15vw, 100px); /* Ensure height is at least 100px */
+}
+
+/* Responsive Font Sizes */
+@media (max-width: 1200px) {
+  .myLogo {
+    font-size: min(2vw, 36px); /* Adjust for medium screens, ensuring font size is at least 36px */
+  }
+  
+  .home-logo-img {
+    height: min(12vw, 90px); /* Adjust for medium screens */
+  }
+
+  .home-nav-link {
+      font-size: 1.3em; /* Slightly smaller for large screens */
+      padding: 5px 12px; /* Adjust padding for large screens */
+    }
+}
+
+@media (max-width: 992px) {
+  .myLogo {
+    font-size: min(3vw, 32px); /* Adjust for smaller screens, ensuring font size is at least 32px */
+  }
+  
+  .home-logo-img {
+    height: min(10vw, 80px); /* Adjust for smaller screens */
+  }
+
+  .home-nav-link {
+      font-size: 1.2em; /* Smaller for medium screens */
+      padding: 4px 10px; /* Adjust padding for medium screens */
+    }
+}
+
+@media (max-width: 768px) {
+  .myLogo {
+    font-size:  min(3vw, 32px); /* Adjust for mobile screens, ensuring font size is at least 28px */
+  }
+  
+  .home-logo-img {
+    height: min(8vw, 70px); /* Adjust for mobile screens */
+  }
+}
+
+@media (max-width: 576px) {
+  .myLogo {
+    font-size: min(3vw, 32px); /* Adjust for very small screens, ensuring font size is at least 24px */
+  }
+  
+  .home-logo-img {
+    height: min(6vw, 60px); /* Adjust for very small screens */
+  }
+  .home-nav-link {
+      font-size: 0.9em; /* Smaller for mobile screens */
+      padding: 2px 6px; /* Adjust padding for mobile screens */
+    }
+}
+
+
+.login-button {
+  background: linear-gradient(to left, #ff6f61, #ffcc33); /* Gradient background */
+  color: white;
+  border: none;
+  border-radius: 30px; /* Rounded corners */
+  padding: 10px 20px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Space between icon and text */
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.6s ease;
+}
+
+.login-button .icon {/* White circle */
+  color: #ff6f61; /* Color to match the left part of the gradient */
+  border-radius: 50%;
+  padding: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-button:hover {
+  background: linear-gradient(to right, #ff5733, #ffc300); /* Slightly darker gradient on hover */
+}
+
+.login-button:active {
+  background: linear-gradient(to right, #c44500, #e0a800); /* Even darker gradient on click */
+}

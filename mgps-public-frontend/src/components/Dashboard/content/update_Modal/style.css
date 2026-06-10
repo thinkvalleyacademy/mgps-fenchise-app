@@ -1,0 +1,10 @@
+.custom-modal-width .modal-dialog {
+    max-width: 48%;
+    
+    /* Adjust this value to your needs */
+}
+
+.custom-modal-rounded .modal-content {
+    border-radius: 20px; 
+    padding: 20px;
+  }

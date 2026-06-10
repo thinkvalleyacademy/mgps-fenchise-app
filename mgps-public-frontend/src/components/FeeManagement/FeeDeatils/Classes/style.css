@@ -1,0 +1,59 @@
+/* Full-Screen Layout Styles for Fee Details */
+/* .fee-detail-container {
+    height: 100vh; 
+    display: flex;
+    flex-direction: column;
+  } */
+  
+  .fee-detail-table {
+    flex: 1;
+    overflow-y: auto;  /* Allow the table to scroll if it overflows */
+    padding: 20px;
+  }
+  
+  .fee-detail-table table {
+    width: 100%;
+    table-layout: auto;
+    border-collapse: collapse;
+  }
+  
+  .fee-detail-container .btn {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+  }
+  
+  /* Pagination at the bottom */
+  .fee-detail-container nav {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  /* Preventing style leakage to other tables */
+  
+  table.fee-detail-table .page-item.active .page-link {
+    background-color: #007bff;
+    border-color: #007bff;
+  }
+  
+  .page-link-my {
+    color: #007bff;
+    background-color: transparent;
+    cursor: pointer;
+  }
+  
+  /* table.fee-detail-table .page-item:hover .page-link {
+    background-color: #f1f1f1;
+  } */
+  
+  .text-decoration-none {
+    text-decoration: none;
+    color: inherit;
+  }
+  
+  .text-decoration-none:hover {
+    color: #007bff;
+  }
+  

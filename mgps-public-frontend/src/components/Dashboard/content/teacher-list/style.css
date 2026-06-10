@@ -1,0 +1,21 @@
+#subject-select {
+    width: 100%;
+    background-color: white;
+    border: none;
+    box-shadow: 0px 0px 8px #a39898;
+    border-radius: 20px;
+    padding: 0 15px;
+    font-size: 1rem;
+    height: 2.5rem;
+    margin-top: 10px;
+}
+
+#subject-select:focus {
+    box-shadow: 0px 0px 8px #007bff;
+    border: none;
+    outline: none;
+}
+
+#subject-select option {
+    padding: 10px;
+}

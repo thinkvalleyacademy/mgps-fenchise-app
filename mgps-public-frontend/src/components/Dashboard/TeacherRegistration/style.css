@@ -1,0 +1,9 @@
+#Mystyle{
+    position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  margin-right: 0; /* Set margin-right to 0 to make it stick to the right side */
+  z-index: 1050; /* Ensure modal is above other elements */
+  width: 3000px; 
+  }

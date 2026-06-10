@@ -1,0 +1,121 @@
+
+/* Total fee display */
+.dynamic-total-fee {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.success-icon {
+  margin-bottom: 0.5rem;
+}
+.professional-btn {
+  background: linear-gradient(90deg, #4caf50, #2e7d32); /* Gradient green */
+  border: none; /* No border */
+  border-radius: 30px; /* Rounded edges */
+  color: #fff; /* White text */
+  font-size: 1.2rem; /* Larger text */
+  font-weight: bold; /* Bold font */
+  padding: 10px 20px; /* Padding for size */
+  cursor: pointer; /* Pointer cursor on hover */
+  transition: all 0.3s ease; /* Smooth hover effect */
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+}
+
+.professional-btn:hover {
+  background: linear-gradient(90deg, #66bb6a, #388e3c); /* Slightly lighter gradient on hover */
+  box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.3); /* Enhance shadow on hover */
+  transform: translateY(-2px); /* Lift button on hover */
+}
+
+.professional-btn:active {
+  transform: translateY(1px); /* Button click effect */
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2); /* Reduced shadow on click */
+}
+.print-btn {
+  background: linear-gradient(90deg, #ff9800, #f57c00); /* Gradient orange */
+  border: none;
+  border-radius: 30px;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.print-btn:hover {
+  background: linear-gradient(90deg, #ffb74d, #fb8c00); /* Lighter orange on hover */
+  box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+.print-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+
+.success-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 50px;
+  text-align: center;
+}
+
+.checkmark-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: #4caf50;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: popIn 0.5s ease;
+}
+
+.checkmark {
+  width: 50px;
+  height: 25px;
+  border: 5px solid white;
+  border-width: 0 0 5px 5px;
+  transform: rotate(-45deg);
+  position: absolute;
+  animation: drawCheckmark 0.5s ease 0.5s forwards;
+}
+
+.success-message {
+  color: #4caf50;
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 20px 0;
+}
+
+@keyframes popIn {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes drawCheckmark {
+  from {
+    stroke-dasharray: 50;
+    stroke-dashoffset: 50;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.button-container {
+  display: flex;
+  gap: 20px;
+}

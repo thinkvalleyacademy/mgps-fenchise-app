@@ -1,0 +1,135 @@
+/*
+Container
+.fee-container {
+    margin-top: 16px;
+    margin-bottom: 16px;
+    padding: 20px;
+    overflow-y: hidden; 
+    overflow-x: hidden; 
+}
+.container-fluid {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Card */
+/*
+.fee-card {
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+}
+*/
+
+/* Header Section */
+/*
+.fee-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.fee-left {
+    display: flex;
+    align-items: center;
+}
+.fee-avatar {
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    background-color: #007bff;
+    color: #fff;
+    margin-right: 12px;
+}
+.fee-name {
+    margin-bottom: 4px;
+    font-size: 1.75rem;
+}
+.fee-details {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #6c757d;
+}
+.fee-right {
+    text-align: right;
+}
+.fee-dues {
+    color: #dc3545;
+    font-weight: bold;
+    margin: 0;
+}
+*/
+
+/* Fee Columns */
+.fee-column {
+  text-align: center;
+  margin-bottom: 12px;
+  padding: 10px;
+}
+.fee-label {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #6c757d;
+}
+.fee-value {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #343a40;
+}
+
+/* Text Variants */
+.text-danger {
+  color: #dc3545 !important;
+}
+.text-dark {
+  color: #343a40 !important;
+}
+.text-muted {
+  color: #6c757d !important;
+}
+
+/* Utility Classes */
+.my-4 {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+.addButton {
+  padding: 20px;
+}
+.p-4 {
+  padding: 16px;
+}
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure the table doesn't overflow */
+.table-responsive {
+  max-height: calc(100vh - 250px); /* Adjust to your layout */
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+/* Sticky summary section */
+
+.summary-section {
+  position: sticky;
+  bottom: 0;
+  background-color: #ffffff;
+  padding: 10px;
+  border-top: 1px solid #ddd;
+  z-index: 1000;
+  box-shadow: 0px -2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.fee-summary-text {
+  margin-right: 4.5rem;
+} 
+

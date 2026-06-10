@@ -10,9 +10,10 @@ These files are ready to copy to your Linux server under /home/mgps01/mgpsv2/dev
 - nginx.conf for frontend
 
 ## Steps on the server
-1. Copy this folder to /home/mgps01/mgpsv2/dev.
-2. Rename .env.example to .env and update the values.
-3. Run the helper script:
+1. Start the PostgreSQL stack separately from [docker-files/postgres/docker-compose.yml](../../postgres/docker-compose.yml).
+2. Copy this folder to /home/mgps01/mgpsv2/dev.
+3. Rename .env.example to .env and update the values.
+4. Run the helper script:
    ```bash
    cd /home/mgps01/mgpsv2/dev
    ./deploy.sh

@@ -1,0 +1,270 @@
+/* Child-Friendly Admission Enquiry Popup */
+
+.admission-container {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 0;
+}
+
+.admission-right {
+  background: linear-gradient(135deg, #FFF9E6 0%, #FFFFFF 100%);
+  padding: 35px 30px;
+  border-radius: 25px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  border: 4px solid;
+  border-image: linear-gradient(90deg, #FFD93D, #FF6B6B, #4ECDC4, #45B7D1) 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Decorative corner icons */
+.admission-right::before {
+  content: '🌟🎈📚';
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px;
+  opacity: 0.6;
+}
+
+.admission-right h2 {
+  text-align: center;
+  color: #FF6B6B;
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 25px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  font-family: 'Comic Sans MS', 'Chalkboard', cursive;
+}
+
+.admission-right form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.admission-right input,
+.admission-right select,
+.admission-right textarea {
+  width: 100%;
+  padding: 14px 18px;
+  border: 3px solid #E0E0E0;
+  border-radius: 50px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: white;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.admission-right input:focus,
+.admission-right select:focus,
+.admission-right textarea:focus {
+  outline: none;
+  border-color: #45B7D1;
+  box-shadow: 0 0 0 4px rgba(69, 183, 209, 0.15);
+  transform: translateY(-2px);
+}
+
+.admission-right select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2345B7D1' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 18px center;
+  padding-right: 45px;
+}
+
+.admission-right textarea {
+  border-radius: 20px;
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+}
+
+.admission-right button[type="submit"] {
+  background: linear-gradient(135deg, #FF6B6B 0%, #FFD93D 100%);
+  color: white;
+  padding: 16px 40px;
+  border: none;
+  border-radius: 50px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 10px;
+}
+
+.admission-right button[type="submit"]:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(255, 107, 107, 0.6);
+  background: linear-gradient(135deg, #FFD93D 0%, #FF6B6B 100%);
+}
+
+.admission-right button[type="submit"]:active {
+  transform: translateY(-2px);
+}
+
+/* Placeholder styling */
+.admission-right input::placeholder,
+.admission-right textarea::placeholder {
+  color: #B0B0B0;
+  font-style: italic;
+}
+
+/* Success/Error message */
+.notify-msg {
+  background: linear-gradient(135deg, #4ECDC4, #45B7D1);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 50px;
+  text-align: center;
+  font-weight: 600;
+  margin-bottom: 20px;
+  animation: slideDown 0.5s ease;
+}
+
+.notify-msg.error {
+  background: linear-gradient(135deg, #FF6B6B, #FF9FF3);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(5px);
+}
+
+/* Modal dialog */
+.modal-dialog {
+  max-width: 650px;
+  margin: 20px auto;
+}
+
+.modal-content {
+  border-radius: 25px;
+  border: none;
+  overflow: hidden;
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #45B7D1 0%, #4ECDC4 100%);
+  color: white;
+  border-radius: 25px 25px 0 0;
+  padding: 20px 25px;
+  border: none;
+  position: relative;
+}
+
+.modal-header::before {
+  content: '🎨🌈✨🎈🪁';
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 20px;
+  opacity: 0.8;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  width: 100%;
+  font-family: 'Comic Sans MS', 'Chalkboard', cursive;
+}
+
+.modal-header .btn-close {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: white;
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  opacity: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255,255,255,0.5);
+}
+
+.modal-body {
+  padding: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .admission-container {
+    margin: 20px auto;
+  }
+  
+  .admission-right {
+    padding: 30px 20px;
+    border-radius: 20px;
+  }
+  
+  .admission-right h2 {
+    font-size: 1.5rem;
+  }
+  
+  .admission-right input,
+  .admission-right select,
+  .admission-right textarea {
+    padding: 12px 16px;
+    font-size: 0.95rem;
+  }
+  
+  .admission-right button[type="submit"] {
+    padding: 14px 30px;
+    font-size: 1.1rem;
+  }
+  
+  .modal-dialog {
+    margin: 10px;
+  }
+  
+  .modal-header::before {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 576px) {
+  .admission-right {
+    padding: 25px 18px;
+  }
+  
+  .admission-right h2 {
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+  }
+  
+  .admission-right input,
+  .admission-right select,
+  .admission-right textarea {
+    padding: 11px 15px;
+    font-size: 0.9rem;
+    border-radius: 40px;
+  }
+  
+  .admission-right button[type="submit"] {
+    padding: 13px 25px;
+    font-size: 1rem;
+  }
+}

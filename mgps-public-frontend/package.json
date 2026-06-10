@@ -1,0 +1,73 @@
+{
+  "name": "mgps-sms-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@mdi/react": "^1.6.1",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "axios": "^1.6.2",
+    "bootstrap": "^4.6.0",
+    "chart.js": "^4.4.7",
+    "cors": "^2.8.5",
+    "framer-motion": "^11.0.20",
+    "lucide-react": "^0.468.0",
+    "prop-types": "^15.8.1",
+    "react": "^18.2.0",
+    "react-bootstrap": "^1.6.4",
+    "react-bootstrap-validation": "^0.1.11",
+    "react-button": "^1.2.1",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^4.12.0",
+    "react-paginate": "^8.2.0",
+    "react-router-dom": "^6.20.1",
+    "react-scripts": "5.0.1",
+    "react-select": "^5.8.0",
+    "react-toastify": "^10.0.4",
+    "react-top-loading-bar": "^2.3.1",
+    "rsuite": "^5.53.0",
+    "sonarqube-scanner": "^3.5.0",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build ",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "postinstall": "patch-package",
+    "server": "live-server public --host=0.0.0.0 --port=7902 --middleware=./disable-browser-cache.js"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@types/bootstrap": "^5.2.10",
+    "@types/react-select": "^3.1.2",
+    "dotenv-webpack": "^8.0.1",
+    "patch-package": "^8.0.1",
+    "webpack": "^5.90.3",
+    "webpack-cli": "^5.1.4"
+  },
+  "description": "This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).",
+  "main": "index.js",
+  "author": "",
+  "license": "ISC"
+}

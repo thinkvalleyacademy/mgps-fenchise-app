@@ -1,0 +1,57 @@
+ <div className="align-items-center d-flex h-100">
+                    <div className="card-body">
+                    <div className="align-items-center d-flex h-100">
+                    <div className="card-body">
+                        <div className="text-center text-lg-left mb-3">
+                            
+                                <span><img src="https://demo.creativeitem.com/ekattor/uploads/system/logo/logo-dark.png" alt="" height="35"/></span>
+                            
+                        </div>
+                        <h4 className="mt-0">Sign in</h4>
+                        <p className="text-muted mb-4">Enter your email address and password to access account.</p>
+    
+                        <form action="#" method="post" id="loginForm" onSubmit={handleSubmit}>
+                            <div className="form-group">
+                                <label htmlFor="email">Email</label>
+                                <input className="form-control" type="email" name="email" id="email" required="" placeholder="Enter your email"/>
+                            </div>
+                            <div className="form-group">
+                                {/* <link to="#" className="text-muted float-right" onClick="forgotPass();"><small>Forgot your password?</small></link> */}
+                                <label htmlFor="password">Password</label>
+                                <input className="form-control" type="password" name="password" required="" id="password" placeholder="Enter your password"/>
+                                <span className="text-danger" id="error_message"></span>
+                            </div>
+                            <div className="form-group mb-0 text-center">
+                                <button className="btn btn-primary btn-block" type="submit"><i className="mdi mdi-login"></i> Log in </button>
+                            </div>
+                            <div className="row mt-2">
+                                <div className="col-md-12 text-center">
+                                    <h4 className="text-muted">Login As <i className="mdi mdi-arrow-down"></i></h4>
+                                </div>
+                                <div className="col-md-12 text-center">
+                                    <button to="#" className="btn btn-outline-success btn-rounded btn-sm mt-1">Superadmin</button>
+                                    <button to="#" className="btn btn-outline-success btn-rounded btn-sm mt-1">Admin</button>
+                                    <button to="#"  className="btn btn-outline-success btn-rounded btn-sm mt-1">Teacher</button>
+                                    <button to="#"  className="btn btn-outline-success btn-rounded btn-sm mt-1">Parent</button>
+                                    <button to="#" className="btn btn-outline-success btn-rounded btn-sm mt-1">Student</button>
+                                    <button to="#" className="btn btn-outline-success btn-rounded btn-sm mt-1">Accountant</button>
+                                    <button to="#"  className="btn btn-outline-success btn-rounded btn-sm mt-1">Librarian</button>
+                                </div>
+                            </div>
+                        </form>
+    
+                        <form action="#" method="post" id="forgotForm" style={{display: "none"}}>
+                            <div className="form-group">
+                                {/* <link to="#" className="text-muted float-right" ><small>Back to login</small></link> */}
+                                <label htmlFor="forgotEmail">Email</label>
+                                <input className="form-control" type="email" name="email" required="" id="forgotEmail" placeholder="Enter your email"/>
+                            </div>
+                            <div className="form-group mb-0 text-center">
+                                <button className="btn btn-primary btn-block" type="submit"><i className="mdi mdi-login"></i> Sent password reset link </button>
+                            </div>
+                        </form>
+                    </div> 
+                </div>
+                    </div>
+    
+            </div>

@@ -1,0 +1,520 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap');
+
+/* Global Styles */
+* {
+  box-sizing: border-box;
+}
+
+.container {
+  margin-bottom: 5%;
+}
+
+/* Admission Container */
+.admission-container {
+  display: flex;
+  padding: 40px;
+  background: linear-gradient(135deg, #fff5e6 0%, #ffffff 100%);
+  color: #333;
+  gap: 40px;
+  max-width: 1400px;
+  margin: 40px auto;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.admission-left {
+  flex: 1;
+  padding: 20px;
+}
+
+.admission-left h1 {
+  font-size: 42px !important;
+  margin-bottom: 15px;
+  font-weight: 700;
+  font-family: 'Barlow Condensed', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Admission Banner with WhatsApp Button */
+.admission-banner {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 25px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.admission-banner h1 {
+  margin: 0;
+  font-size: 28px !important;
+  font-weight: 800;
+  -webkit-text-fill-color: #ffffff !important;
+  background: none !important;
+  flex: 1;
+}
+
+.banner-whatsapp-btn {
+  background: #ffffff;
+  color: #25D366;
+  padding: 12px 24px;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+.banner-whatsapp-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  background: #25D366;
+  color: #ffffff;
+}
+
+.banner-whatsapp-btn svg {
+  font-size: 20px;
+}
+
+.breadcrumb {
+  font-size: 1.1rem;
+  color: #667eea;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.admission-description {
+  font-size: 15px;
+  line-height: 1.8;
+  color: #555;
+  margin-bottom: 30px;
+}
+
+/* Quick Contact Info */
+.quick-contact-info {
+  background: #ffffff;
+  padding: 25px;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  margin-top: 30px;
+}
+
+.quick-contact-info h3 {
+  font-size: 20px;
+  margin-bottom: 15px;
+  color: #667eea;
+  font-weight: 700;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+  color: #555;
+}
+
+.contact-item:last-child {
+  border-bottom: none;
+}
+
+.contact-icon {
+  font-size: 18px;
+  color: #667eea;
+  width: 24px;
+  text-align: center;
+}
+
+.whatsapp-icon {
+  color: #25D366;
+}
+
+/* Class Timings Info */
+.class-timings-info {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  padding: 25px;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  margin-top: 25px;
+  border: 2px solid #e9ecef;
+}
+
+.class-timings-info h3 {
+  font-size: 20px;
+  margin-bottom: 15px;
+  color: #667eea;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timing-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+  color: #555;
+}
+
+.timing-item:last-child {
+  border-bottom: none;
+}
+
+.timing-label {
+  font-weight: 700;
+  color: #667eea;
+  min-width: 80px;
+}
+
+/* Admission Form */
+.admission-right {
+  flex: 1;
+  padding: 35px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+  border: 2px solid #f0f0f0;
+}
+
+.form-header-section {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.form-header-section h2 {
+  margin-bottom: 10px;
+  color: #333;
+  font-size: 28px !important;
+  font-weight: 700;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+.form-header-section p {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Form Styles */
+.admission-right form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group-row {
+  display: flex;
+  gap: 20px;
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label-icon {
+  font-size: 16px;
+}
+
+.admission-right form input,
+.admission-right form select,
+.admission-right form textarea {
+  padding: 14px 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Nunito', sans-serif;
+  transition: all 0.3s ease;
+  background: #ffffff;
+}
+
+.admission-right form input:focus,
+.admission-right form select:focus,
+.admission-right form textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  transform: translateY(-2px);
+}
+
+.admission-right form input:hover,
+.admission-right form select:hover,
+.admission-right form textarea:hover {
+  border-color: #ced4da;
+}
+
+.admission-right form textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+/* Query Type Select */
+.query-type-select {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.submit-btn {
+  flex: 1;
+  padding: 15px 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.submit-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.submit-btn:active {
+  transform: translateY(-1px);
+}
+
+.whatsapp-btn {
+  flex: 1;
+  padding: 15px 30px;
+  background: linear-gradient(135deg, #25D366 0%, #20BA5A 100%);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+}
+
+.whatsapp-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
+}
+
+.form-note {
+  text-align: center;
+  font-size: 13px;
+  color: #999;
+  margin-top: 15px;
+  margin-bottom: 0;
+}
+
+/* WhatsApp Floating Button */
+.whatsapp-float {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: linear-gradient(135deg, #25D366 0%, #20BA5A 100%);
+  color: #fff;
+  padding: 16px 24px;
+  border-radius: 50px;
+  font-size: 24px;
+  box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  animation: pulse 2s infinite;
+}
+
+.whatsapp-float:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 30px rgba(37, 211, 102, 0.6);
+}
+
+.whatsapp-text {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
+  }
+  50% {
+    box-shadow: 0 4px 30px rgba(37, 211, 102, 0.6);
+  }
+}
+
+/* Responsive Design */
+@media screen and (max-width: 1024px) {
+  .admission-container {
+    flex-direction: column;
+    padding: 30px;
+    margin: 20px;
+  }
+
+  .admission-left,
+  .admission-right {
+    flex: none;
+    width: 100%;
+  }
+
+  .form-group-row {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .whatsapp-float {
+    bottom: 20px;
+    right: 20px;
+    padding: 14px 20px;
+  }
+
+  .whatsapp-text {
+    display: none;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .admission-container {
+    padding: 20px;
+    margin: 10px;
+    border-radius: 15px;
+  }
+
+  .admission-left h1 {
+    font-size: 32px !important;
+  }
+
+  .admission-right {
+    padding: 25px 20px;
+  }
+
+  .form-header-section h2 {
+    font-size: 24px !important;
+  }
+
+  .admission-right form input,
+  .admission-right form select,
+  .admission-right form textarea {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+
+  .submit-btn,
+  .whatsapp-btn {
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+
+  .whatsapp-float {
+    bottom: 15px;
+    right: 15px;
+    padding: 12px 16px;
+  }
+}
+
+/* Old styles - kept for compatibility */
+#form-header {
+  margin-top: 5%;
+  text-align: center;
+}
+
+#form-tagline {
+  background: #ff6d00;
+  border-top-left-radius: 0.5rem;
+  border-bottom-left-radius: 0.5rem;
+  color: #ffffff;
+  margin-top: 5%;
+  padding: 4%;
+  text-align: left;
+}
+
+#form-tagline .fa {
+  margin-bottom: 15%;
+}
+
+#form-tagline h2 {
+  margin-bottom: 15%;
+}
+
+#form-content {
+  background: #f4f4f4;
+  border-top-right-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+  margin-top: 5%;
+  padding: 3%;
+}
+
+.form-group {
+  margin-top: 5%;
+}
+
+.contact {
+  padding: 4%;
+  height: 400px;
+}
+
+.control-label {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+div .submit-button {
+  margin-top: 3%;
+  text-align: right;
+}
+
+button#submit {
+  white-space: normal;
+  width: auto;
+  background: #ff6d00;
+  color: #ffffff;
+  font-weight: 600;
+  width: 25%;
+}

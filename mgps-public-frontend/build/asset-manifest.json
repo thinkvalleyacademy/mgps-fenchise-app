@@ -1,0 +1,26 @@
+{
+  "files": {
+    "main.css": "/static/css/main.b08c7f23.css",
+    "main.js": "/static/js/main.82258ea0.js",
+    "static/js/453.b06c5245.chunk.js": "/static/js/453.b06c5245.chunk.js",
+    "static/media/wc_img3.jpeg": "/static/media/wc_img3.0132524a2feb76637cd2.jpeg",
+    "static/media/wc_img5.jpeg": "/static/media/wc_img5.0132524a2feb76637cd2.jpeg",
+    "static/media/wc_img4.jpeg": "/static/media/wc_img4.32230abdd5962e098226.jpeg",
+    "static/media/Empty.png": "/static/media/Empty.d931f8e8b9ca19de5148.png",
+    "static/media/wc_img2.jpeg": "/static/media/wc_img2.d15087f528b4718c77e8.jpeg",
+    "static/media/wc_img1.jpeg": "/static/media/wc_img1.fd9d05cfde3b34575b25.jpeg",
+    "static/media/kangaroo-bg.png": "/static/media/kangaroo-bg.5944da2b9009846174ad.png",
+    "static/media/Logo.png": "/static/media/Logo.f1260bf1e34bc4998a23.png",
+    "static/media/mgps_logo.png": "/static/media/mgps_logo.f1260bf1e34bc4998a23.png",
+    "static/media/user.png": "/static/media/user.557587208eb9e232f2ca.png",
+    "static/media/person.png": "/static/media/person.04d669503e5ce0ebc08f.png",
+    "index.html": "/index.html",
+    "main.b08c7f23.css.map": "/static/css/main.b08c7f23.css.map",
+    "main.82258ea0.js.map": "/static/js/main.82258ea0.js.map",
+    "453.b06c5245.chunk.js.map": "/static/js/453.b06c5245.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.b08c7f23.css",
+    "static/js/main.82258ea0.js"
+  ]
+}

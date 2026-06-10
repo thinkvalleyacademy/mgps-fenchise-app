@@ -1,0 +1,115 @@
+.home-card {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e0e0e0;
+  border-radius: 15px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  background: white;
+  --home-card-title-height: 45px;
+}
+
+.home-card__content {
+  position: relative;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.home-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.home-card:hover .home-card__image {
+  transform: scale(1.1);
+}
+
+.home-card__hover-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.home-card:hover .home-card__hover-overlay {
+  opacity: 1;
+}
+
+.home-card__hover-text {
+  color: white;
+  font-size: 0.95rem;
+  text-align: center;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.home-card__title {
+  height: var(--home-card-title-height);
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #FF6B6B, #FFD93D);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: bold;
+  padding: 8px 15px;
+  margin: 0;
+  box-sizing: border-box;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.home-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .home-card {
+    height: 260px;
+    --home-card-title-height: 40px;
+  }
+
+  .home-card__title {
+    font-size: 1rem;
+  }
+  
+  .home-card__hover-text {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-card {
+    height: 240px;
+    margin-bottom: 20px;
+    --home-card-title-height: 38px;
+  }
+
+  .home-card__title {
+    font-size: 0.95rem;
+  }
+
+  .home-card__hover-text {
+    font-size: 0.85rem;
+    padding: 15px;
+  }
+}
