@@ -11,7 +11,7 @@ spring:
 
 app:
   cors:
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:4200,http://100.101.103.63:6080,http://100.101.103.63:6079,http://100.101.103.63:8081}
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:*}
 
 logging:
   level:
