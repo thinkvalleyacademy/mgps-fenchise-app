@@ -33,7 +33,7 @@ These files are ready to copy to your Linux server under /home/mgps01/mgpsv2/dev
 ## Access
 - Frontend (via Nginx reverse proxy): http://YOUR_SERVER_IP/
 - Backend API (via the same proxy): http://YOUR_SERVER_IP/api/
-- Direct backend container (if needed): http://YOUR_SERVER_IP:8080/api
+- Direct backend container (if needed): http://YOUR_SERVER_IP:8081/api
 
 ## Useful commands
 ```bash
