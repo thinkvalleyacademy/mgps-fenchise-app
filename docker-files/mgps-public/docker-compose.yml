@@ -1,8 +1,8 @@
 services:
   public-website:
     build:
-      context: ${CODE_DIR:-/home/mgps01/mgpsv2/code/mgpsfren/mgps-fenchise-app}
-      dockerfile: ${DEPLOY_DIR:-/home/mgps01/mgpsv2/dev/mgps-public}/Dockerfile
+      context: ${CODE_DIR:-/home/mgps01/mgpsv2/code/mgpsfren/mgps-fenchise-app/mgps-public-frontend}
+      dockerfile: Dockerfile
     container_name: mgps-public-website
     restart: unless-stopped
     ports:

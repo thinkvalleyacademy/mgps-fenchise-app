@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     environment:
       SERVER_PORT: 8080
-      SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST:-host.docker.internal}:${DB_PORT:-5432}/${DB_NAME:-mgps_master}
+      SPRING_DATASOURCE_URL: jbc:postgresql://${DB_HOST:-host.docker.internal}:${DB_PORT:-5432}/${DB_NAME:-mgps_master}
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres123}
       APP_JWT_SECRET_KEY: ${JWT_SECRET:-change-this-in-production}
