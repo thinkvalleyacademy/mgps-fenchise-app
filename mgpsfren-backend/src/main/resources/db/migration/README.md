@@ -30,3 +30,12 @@ To verify executed migrations:
 ```sql
 SELECT * FROM flyway_schema_history;
 ```
+delete all super admin:
+
+docker exec -it mgps-postgres psql -U postgres -d mgps_master \
+-c "DELETE FROM app_users WHERE role = 'SUPER_ADMIN';"
+
+
+delete specific super admin:
+docker exec -it mgps-postgres psql -U postgres -d mgps_master \
+-c "DELETE FROM app_users WHERE role = 'SUPER_ADMIN' AND email = 'admin@example.com';"
