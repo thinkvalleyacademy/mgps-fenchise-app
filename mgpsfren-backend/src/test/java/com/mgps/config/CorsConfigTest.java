@@ -6,9 +6,28 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class CorsConfigTest {
+
+    @Test
+    void shouldUseSpecificDefaultOriginsInsteadOfWildcard() throws IOException {
+        String applicationYaml = Files.readString(Path.of("src/main/resources/application.yml"));
+        String applicationDevYaml = Files.readString(Path.of("src/main/resources/application-dev.yml"));
+
+        assertThat(applicationYaml)
+            .contains("allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:https://mgpsfren.thinkvalleysoftwares.in/,http://100.101.103.63:6080}");
+        assertThat(applicationDevYaml)
+            .contains("allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:https://mgpsfren.thinkvalleysoftwares.in/,http://100.101.103.63:6080}");
+        assertThat(applicationYaml)
+            .doesNotContain("allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:*}");
+        assertThat(applicationDevYaml)
+            .doesNotContain("allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:*}");
+    }
 
     @Test
     void shouldUseWildcardOriginPatternsWhenOriginsAreConfiguredAsWildcard() {
