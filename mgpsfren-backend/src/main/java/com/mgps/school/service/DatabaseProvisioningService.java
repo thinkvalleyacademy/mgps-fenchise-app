@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 public class DatabaseProvisioningService {
 
     private static final Logger log = LoggerFactory.getLogger(DatabaseProvisioningService.class);
+    private static final String TENANT_MIGRATION_LOCATION = "classpath:db/migration/tenant";
     
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -50,6 +51,10 @@ public class DatabaseProvisioningService {
     @Value("${DB_PASSWORD:${spring.datasource.password:${app.db.password:postgres123}}}")
     private String dbPassword;
     
+    public static String[] getTenantMigrationLocations() {
+        return new String[]{TENANT_MIGRATION_LOCATION};
+    }
+
     /**
      * Provision a new tenant database
      * Creates the database and initializes schema via Flyway
@@ -194,7 +199,7 @@ public class DatabaseProvisioningService {
 
             Flyway flyway = Flyway.configure()
                 .dataSource(tenantDataSource)
-                .locations("classpath:db/migration")
+                .locations(getTenantMigrationLocations())
                 .baselineOnMigrate(true)
                 .load();
 
