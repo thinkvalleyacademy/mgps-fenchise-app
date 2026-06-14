@@ -2,6 +2,7 @@ package com.mgps.tenant;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
@@ -22,12 +23,18 @@ public class DataSourceRegistry {
     
     private final Map<String, DataSource> dataSourceCache = new HashMap<>();
     private final Object cacheLock = new Object();
-    
-    private static final String JDBC_URL_TEMPLATE = "jdbc:postgresql://%s:%d/%s";
-    private static final String DEFAULT_HOST = "localhost";
-    private static final int DEFAULT_PORT = 5432;
-    private static final String DB_USERNAME = "postgres";
-    private static final String DB_PASSWORD = "postgres123";
+
+    @Value("${DB_HOST:postgres}")
+    private String dbHost;
+
+    @Value("${DB_PORT:5432}")
+    private String dbPort;
+
+    @Value("${DB_USERNAME:${spring.datasource.username:postgres}}")
+    private String dbUsername;
+
+    @Value("${DB_PASSWORD:${spring.datasource.password:postgres123}}")
+    private String dbPassword;
     
     /**
      * Get or create a datasource for a tenant
@@ -83,9 +90,9 @@ public class DataSourceRegistry {
      */
     private DataSource createDataSource(String tenantId, String databaseName) {
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(String.format(JDBC_URL_TEMPLATE, DEFAULT_HOST, DEFAULT_PORT, databaseName));
-        config.setUsername(DB_USERNAME);
-        config.setPassword(DB_PASSWORD);
+        config.setJdbcUrl(String.format("jdbc:postgresql://%s:%s/%s", dbHost, dbPort, databaseName));
+        config.setUsername(dbUsername);
+        config.setPassword(dbPassword);
         config.setMaximumPoolSize(10);
         config.setMinimumIdle(2);
         config.setConnectionTimeout(30000);

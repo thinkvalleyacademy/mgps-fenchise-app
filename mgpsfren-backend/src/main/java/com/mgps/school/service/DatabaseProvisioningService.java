@@ -38,10 +38,10 @@ public class DatabaseProvisioningService {
     @Autowired(required = false)
     private DataSourceRegistry dataSourceRegistry;
     
-    @Value("${DB_HOST:${app.db.host:localhost}}")
+    @Value("${DB_HOST:postgres}")
     private String dbHost;
 
-    @Value("${DB_PORT:${app.db.port:5432}}")
+    @Value("${DB_PORT:5432}")
     private String dbPort;
 
     @Value("${DB_USERNAME:${spring.datasource.username:${app.db.username:postgres}}}")
