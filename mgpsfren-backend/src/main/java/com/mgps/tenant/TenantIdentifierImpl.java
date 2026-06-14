@@ -83,16 +83,16 @@ public class TenantIdentifierImpl implements TenantIdentifier {
         }
 
         try {
-            String schoolId = jwtService.extractSchoolIdAsString(token);
-            if (schoolId != null && !schoolId.isBlank()) {
-                log.debug("Tenant resolved from JWT schoolId claim: {}", schoolId);
-                return schoolId;
-            }
-
             String tenantId = jwtService.extractTenantId(token);
             if (tenantId != null && !tenantId.isBlank()) {
                 log.debug("Tenant resolved from JWT tenantId claim: {}", tenantId);
                 return tenantId.toLowerCase().trim();
+            }
+
+            String schoolId = jwtService.extractSchoolIdAsString(token);
+            if (schoolId != null && !schoolId.isBlank()) {
+                log.debug("Tenant resolved from JWT schoolId claim: {}", schoolId);
+                return schoolId;
             }
         } catch (Exception ex) {
             log.debug("Could not decode JWT tenant claim", ex);

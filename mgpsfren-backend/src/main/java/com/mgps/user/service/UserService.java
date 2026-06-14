@@ -12,6 +12,8 @@ import com.mgps.user.dto.UserDtos.RowResult;
 import com.mgps.user.dto.UserDtos.UserProfile;
 import com.mgps.user.dto.UserDtos.UserStatusRequest;
 import com.mgps.user.dto.UserDtos.UserUpdateRequest;
+import com.mgps.school.repository.SchoolRepository;
+import com.mgps.tenant.TenantNamingUtil;
 import com.mgps.user.entity.AppUser;
 import com.mgps.user.entity.UserRole;
 import com.mgps.user.entity.UserStatus;
@@ -39,13 +41,20 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final TokenRevocationService tokenRevocationService;
+    private final SchoolRepository schoolRepository;
 
     public UserService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
                        TokenRevocationService tokenRevocationService) {
+        this(appUserRepository, passwordEncoder, jwtService, tokenRevocationService, null);
+    }
+
+    public UserService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
+                       TokenRevocationService tokenRevocationService, SchoolRepository schoolRepository) {
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.tokenRevocationService = tokenRevocationService;
+        this.schoolRepository = schoolRepository;
     }
 
     public AuthResponse registerUser(RegisterUserRequest request) {
@@ -207,12 +216,31 @@ public class UserService {
     }
 
     private AuthResponse buildAuthResponse(AppUser user) {
+        String tenantId = resolveTenantId(user);
         AuthResponse response = new AuthResponse();
-        response.setAccessToken(jwtService.generateAccessToken(user));
-        response.setRefreshToken(jwtService.generateRefreshToken(user));
+        response.setAccessToken(jwtService.generateAccessToken(user, tenantId));
+        response.setRefreshToken(jwtService.generateRefreshToken(user, tenantId));
         response.setExpiresIn(jwtService.getExpirationMs());
         response.setProfile(toProfile(user));
         return response;
+    }
+
+    private String resolveTenantId(AppUser user) {
+        if (user == null) {
+            return null;
+        }
+
+        if (user.getRole() == UserRole.SUPER_ADMIN) {
+            return TenantNamingUtil.CLIENT_TENANT_ID;
+        }
+
+        if (user.getSchoolId() == null) {
+            return null;
+        }
+
+        return schoolRepository.findById(user.getSchoolId())
+            .map(school -> TenantNamingUtil.generateTenantId(school.getName(), school.getCity(), school.getPostalCode()))
+            .orElse(null);
     }
 
     private void revokeTokenIfPresent(String token) {

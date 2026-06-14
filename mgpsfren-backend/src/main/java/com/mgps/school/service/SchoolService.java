@@ -12,6 +12,7 @@ import com.mgps.school.repository.SchoolDomainRepository;
 import com.mgps.school.repository.SchoolRepository;
 import com.mgps.school.repository.SubscriptionPlanRepository;
 import com.mgps.tenant.RoutingDataSource;
+import com.mgps.tenant.TenantNamingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -106,8 +107,8 @@ public class SchoolService {
             .status(SchoolStatus.ACTIVE)
             .build();
         
-        // Generate database name
-        String databaseName = generateDatabaseName(schoolId);
+        // Generate database name and tenant key from school metadata
+        String databaseName = generateDatabaseName(dto.getName(), dto.getCity(), dto.getPostalCode());
         school.setDatabaseName(databaseName);
         
         // Save to master DB
@@ -293,10 +294,8 @@ public class SchoolService {
     /**
      * Generate database name for school
      */
-    private String generateDatabaseName(UUID schoolId) {
-        // Format: school_<first 12 chars of uuid>_db
-        String uuidStr = schoolId.toString().replace("-", "");
-        return "school_" + uuidStr.substring(0, 12) + "_db";
+    private String generateDatabaseName(String schoolName, String city, String postalCode) {
+        return TenantNamingUtil.generateDatabaseName(schoolName, city, postalCode);
     }
     
     /**

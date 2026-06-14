@@ -4,6 +4,7 @@ import com.mgps.school.entity.School;
 import com.mgps.school.exception.DatabaseProvisioningException;
 import com.mgps.tenant.DataSourceRegistry;
 import com.mgps.tenant.RoutingDataSource;
+import com.mgps.tenant.TenantNamingUtil;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
@@ -150,6 +151,11 @@ public class DatabaseProvisioningService {
             tenantKeys.add(schoolId.toString());
 
             if (school != null) {
+                String tenantId = TenantNamingUtil.generateTenantId(school.getName(), school.getCity(), school.getPostalCode());
+                if (!tenantId.isBlank()) {
+                    tenantKeys.add(tenantId);
+                }
+
                 String tenantSlug = normalizeTenantSlug(school.getName());
                 if (!tenantSlug.isBlank()) {
                     tenantKeys.add(tenantSlug);

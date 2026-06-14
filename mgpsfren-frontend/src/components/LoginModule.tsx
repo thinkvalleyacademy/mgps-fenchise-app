@@ -16,6 +16,7 @@ export default function LoginModule({
   loginError
 }: LoginModuleProps) {
   const [view, setView] = useState<'login' | 'forgot-password' | 'reset-password'>('login');
+  const [loginMode, setLoginMode] = useState<'client' | 'partner'>('partner');
   const [forgotEmail, setForgotEmail] = useState('');
   const [passwords, setPasswords] = useState({ new: '', confirm: '' });
   const [isSendingReset, setIsSendingReset] = useState(false);
@@ -164,7 +165,7 @@ export default function LoginModule({
           <div className="logo-placeholder" style={{ width: 40, height: 40, background: 'var(--accent)', borderRadius: '10px' }}></div>
           <div>
             <p className="section-label">MGPS Ecosystem</p>
-            <h3>{loginForm.schoolCode ? 'School Login' : 'Central Login'}</h3>
+            <h3>{loginMode === 'client' ? 'Client Login' : 'Partner Login'}</h3>
           </div>
         </div>
         <span className="badge">Secure</span>
@@ -173,11 +174,47 @@ export default function LoginModule({
       <form onSubmit={handleLoginSubmit}>
         <div className="form-grid">
           <label className="full">
+            Access mode
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+              <button
+                type="button"
+                className={loginMode === 'client' ? 'primary' : 'secondary'}
+                onClick={() => {
+                  setLoginMode('client');
+                  updateLoginField('schoolCode', 'THINKVALLEY_ACADEMY_FREN');
+                }}
+                style={{ flex: 1 }}
+              >
+                Client / Super Admin
+              </button>
+              <button
+                type="button"
+                className={loginMode === 'partner' ? 'primary' : 'secondary'}
+                onClick={() => {
+                  setLoginMode('partner');
+                  if (loginForm.schoolCode === 'THINKVALLEY_ACADEMY_FREN') {
+                    updateLoginField('schoolCode', '');
+                  }
+                }}
+                style={{ flex: 1 }}
+              >
+                Partner / Tenant
+              </button>
+            </div>
+            <p className="hint" style={{ marginTop: '6px' }}>
+              {loginMode === 'client'
+                ? 'Client login uses the fixed super-admin tenant THINKVALLEY_ACADEMY_FREN.'
+                : 'Partner login uses the school-specific tenant database.'}
+            </p>
+          </label>
+
+          <label className="full">
             School Code (Optional)
             <input
               value={loginForm.schoolCode}
               onChange={(event) => updateLoginField('schoolCode', event.target.value)}
-              placeholder="e.g. MGPS-PUNE-01"
+              placeholder={loginMode === 'client' ? 'THINKVALLEY_ACADEMY_FREN' : 'e.g. MGPS-PUNE-01'}
+              disabled={loginMode === 'client'}
             />
             {loginForm.schoolCode && (
               <p className="hint" style={{ color: 'var(--accent)', marginTop: '4px' }}>

@@ -32,18 +32,27 @@ public class JwtService {
     }
 
     public String generateAccessToken(AppUser user) {
-        return generateToken(user, "access", expirationMs);
+        return generateAccessToken(user, null);
+    }
+
+    public String generateAccessToken(AppUser user, String tenantId) {
+        return generateToken(user, "access", expirationMs, tenantId);
     }
 
     public String generateRefreshToken(AppUser user) {
-        return generateToken(user, "refresh", refreshExpirationMs);
+        return generateRefreshToken(user, null);
     }
 
-    public String generateToken(AppUser user, String tokenType, long expiresInMs) {
+    public String generateRefreshToken(AppUser user, String tenantId) {
+        return generateToken(user, "refresh", refreshExpirationMs, tenantId);
+    }
+
+    private String generateToken(AppUser user, String tokenType, long expiresInMs, String tenantId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("jti", UUID.randomUUID().toString());
         claims.put("userId", user.getId().toString());
         claims.put("schoolId", user.getSchoolId() != null ? user.getSchoolId().toString() : null);
+        claims.put("tenantId", tenantId);
         claims.put("role", user.getRole() != null ? user.getRole().name() : null);
         claims.put("status", user.getStatus() != null ? user.getStatus().name() : null);
         claims.put("tokenType", tokenType);
