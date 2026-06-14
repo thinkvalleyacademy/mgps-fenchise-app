@@ -129,7 +129,7 @@ public class SchoolService {
         
         // Register datasource for tenant routing
         try {
-            databaseProvisioningService.registerDataSource(routingDataSource, schoolId, databaseName);
+            databaseProvisioningService.registerDataSource(routingDataSource, savedSchool);
             log.info("Datasource registered for school: {}", schoolId);
         } catch (Exception e) {
             log.error("Failed to register datasource for school", e);

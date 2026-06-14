@@ -15,6 +15,9 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
+import java.text.Normalizer;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,23 +121,69 @@ public class DatabaseProvisioningService {
      * Register datasource in routing datasource for tenant
      */
     public void registerDataSource(RoutingDataSource routingDataSource, UUID schoolId, String databaseName) {
+        registerDataSource(routingDataSource, null, schoolId, databaseName);
+    }
+
+    public void registerDataSource(RoutingDataSource routingDataSource, School school) {
+        if (school == null) {
+            throw new IllegalArgumentException("School cannot be null when registering datasource");
+        }
+
+        registerDataSource(routingDataSource, school, school.getId(), school.getDatabaseName());
+    }
+
+    private void registerDataSource(RoutingDataSource routingDataSource,
+                                    School school,
+                                    UUID schoolId,
+                                    String databaseName) {
         log.info("Registering datasource for tenant: {}", schoolId);
-        
+
         try {
             DataSource tenantDataSource = createTenantDataSource(databaseName);
-            String tenantIdKey = schoolId.toString();
-            
-            routingDataSource.registerTenantDataSource(tenantIdKey, tenantDataSource);
-            
-            if (dataSourceRegistry != null) {
-                dataSourceRegistry.registerDataSource(tenantIdKey, tenantDataSource);
+
+            Set<String> tenantKeys = new LinkedHashSet<>();
+            tenantKeys.add(schoolId.toString());
+
+            if (school != null) {
+                String tenantSlug = normalizeTenantSlug(school.getName());
+                if (!tenantSlug.isBlank()) {
+                    tenantKeys.add(tenantSlug);
+                }
+
+                if (school.getDatabaseName() != null && !school.getDatabaseName().isBlank()) {
+                    tenantKeys.add(school.getDatabaseName());
+                }
             }
-            
+
+            for (String tenantKey : tenantKeys) {
+                routingDataSource.registerTenantDataSource(tenantKey, tenantDataSource);
+
+                if (dataSourceRegistry != null) {
+                    dataSourceRegistry.registerDataSource(tenantKey, tenantDataSource);
+                }
+
+                log.debug("Registered tenant datasource alias: {}", tenantKey);
+            }
+
             log.info("Datasource registered successfully for tenant: {}", schoolId);
         } catch (Exception e) {
             log.error("Failed to register datasource", e);
             throw new DatabaseProvisioningException("Failed to register datasource", e);
         }
+    }
+
+    private String normalizeTenantSlug(String schoolName) {
+        if (schoolName == null || schoolName.isBlank()) {
+            return "";
+        }
+
+        return Normalizer.normalize(schoolName, Normalizer.Form.NFD)
+            .replaceAll("[^\\p{ASCII}]", "")
+            .toLowerCase()
+            .replaceAll("\\s+", "-")
+            .replaceAll("[^a-z0-9-]", "")
+            .replaceAll("-+", "-")
+            .replaceAll("^-|-$", "");
     }
     
     /**
