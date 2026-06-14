@@ -172,6 +172,62 @@ class SchoolServiceTest {
     }
     
     @Test
+    @DisplayName("Should use the free plan when no subscription plan is provided")
+    void testRegisterSchoolUsesFreePlanByDefault() {
+        // Arrange
+        SchoolRegistrationDTO freePlanDto = SchoolRegistrationDTO.builder()
+            .name("Free School")
+            .adminEmail("free@example.com")
+            .adminPhone("+91-9876543210")
+            .address("456 Free Street")
+            .city("Bangalore")
+            .state("Karnataka")
+            .postalCode("560002")
+            .build();
+
+        SubscriptionPlan freePlan = SubscriptionPlan.builder()
+            .id(UUID.randomUUID())
+            .planName("FREE")
+            .maxStudents(100)
+            .maxStaff(10)
+            .maxUsers(100)
+            .monthlyPrice(new BigDecimal("0.00"))
+            .isActive(true)
+            .build();
+
+        School freeSchool = School.builder()
+            .id(UUID.randomUUID())
+            .name(freePlanDto.getName())
+            .adminEmail(freePlanDto.getAdminEmail())
+            .subscriptionPlan(freePlan)
+            .status(SchoolStatus.ACTIVE)
+            .databaseName("school_free_db")
+            .build();
+
+        when(schoolRepository.existsByAdminEmail(freePlanDto.getAdminEmail())).thenReturn(false);
+        when(subscriptionPlanRepository.findByPlanName("FREE")).thenReturn(Optional.of(freePlan));
+        when(schoolRepository.save(any(School.class))).thenReturn(freeSchool);
+        when(domainMappingService.createPrimaryDomain(any(School.class), anyString()))
+            .thenReturn(SchoolDomain.builder()
+                .id(UUID.randomUUID())
+                .domainName("free-school.smsapp.com")
+                .isPrimary(true)
+                .isActive(true)
+                .build());
+
+        // Act
+        SchoolCreatedDTO result = schoolService.registerSchool(freePlanDto);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getName()).isEqualTo("Free School");
+
+        verify(subscriptionPlanRepository).findByPlanName("FREE");
+        verify(subscriptionPlanRepository, never()).findByPlanName("BASIC");
+        verify(schoolRepository).save(any(School.class));
+    }
+
+    @Test
     @DisplayName("Should rollback school creation when database provisioning fails")
     void testRegisterSchoolProvisioningFailure() {
         // Arrange

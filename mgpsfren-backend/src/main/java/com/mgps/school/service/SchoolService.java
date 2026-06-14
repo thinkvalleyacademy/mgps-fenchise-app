@@ -79,13 +79,16 @@ public class SchoolService {
         SubscriptionPlan plan;
 
         if (planId == null) {
-            log.warn("No subscription plan ID provided, attempting to find default 'BASIC' plan");
-            plan = subscriptionPlanRepository.findByPlanName("BASIC")
-                .or(() -> subscriptionPlanRepository.findAll().stream().findFirst())
+            log.warn("No subscription plan ID provided, attempting to find the default FREE plan first");
+            plan = subscriptionPlanRepository.findByPlanName("FREE")
+                .or(() -> subscriptionPlanRepository.findByPlanName("BASIC"))
+                .or(() -> subscriptionPlanRepository.findAll().stream()
+                    .filter(SubscriptionPlan::getIsActive)
+                    .findFirst())
                 .orElseThrow(() -> new ResourceNotFoundException("No subscription plans available in the system"));
         } else {
             plan = subscriptionPlanRepository.findById(planId)
-                .orElseThrow(() -> new ResourceNotFoundException("Subscription plan not found with ID: " + planId));
+                .orElseThrow(() -> new ResourceNotFoundException("Subscription plan not found"));
         }
 
         // Create school entity

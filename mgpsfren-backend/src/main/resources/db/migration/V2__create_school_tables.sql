@@ -32,6 +32,34 @@ INSERT INTO subscription_plans (
 )
 VALUES (
            gen_random_uuid(),
+           'FREE',
+           'Free onboarding plan',
+           100,
+           10,
+           20,
+           0.00,
+           'Free onboarding, core modules, basic reports',
+           true,
+           CURRENT_TIMESTAMP,
+           CURRENT_TIMESTAMP
+       )
+    ON CONFLICT (plan_name) DO NOTHING;
+
+INSERT INTO subscription_plans (
+    id,
+    plan_name,
+    description,
+    max_students,
+    max_staff,
+    max_users,
+    monthly_price,
+    features,
+    is_active,
+    created_at,
+    updated_at
+)
+VALUES (
+           gen_random_uuid(),
            'BASIC',
            'Basic Plan',
            500,

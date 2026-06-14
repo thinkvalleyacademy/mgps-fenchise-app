@@ -6,6 +6,7 @@ import com.mgps.tenant.DataSourceRegistry;
 import com.mgps.tenant.RoutingDataSource;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
@@ -62,10 +63,9 @@ public class DatabaseProvisioningService {
             // Create database
             createDatabase(databaseName);
             log.info("Database created: {}", databaseName);
-            
-            // Note: Flyway migrations for tenant schema are handled separately
-            // via @FlywayTest or separate configuration
-            
+
+            initializeTenantSchema(databaseName);
+
             log.info("Database provisioning completed for school: {}", school.getName());
         } catch (DataAccessException e) {
             log.error("Failed to create database: {}", databaseName, e);
@@ -186,6 +186,30 @@ public class DatabaseProvisioningService {
             .replaceAll("^-|-$", "");
     }
     
+    private void initializeTenantSchema(String databaseName) {
+        HikariDataSource tenantDataSource = null;
+
+        try {
+            tenantDataSource = (HikariDataSource) createTenantDataSource(databaseName);
+
+            Flyway flyway = Flyway.configure()
+                .dataSource(tenantDataSource)
+                .locations("classpath:db/migration")
+                .baselineOnMigrate(true)
+                .load();
+
+            int appliedMigrations = flyway.migrate().migrationsExecuted;
+            log.info("Applied {} Flyway migrations to tenant database: {}", appliedMigrations, databaseName);
+        } catch (Exception e) {
+            log.error("Failed to initialize tenant schema for database: {}", databaseName, e);
+            throw new DatabaseProvisioningException("Failed to initialize tenant schema", e);
+        } finally {
+            if (tenantDataSource != null) {
+                tenantDataSource.close();
+            }
+        }
+    }
+
     /**
      * Create HikariCP datasource for tenant database
      */
