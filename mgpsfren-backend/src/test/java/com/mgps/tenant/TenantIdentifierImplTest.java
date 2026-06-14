@@ -1,9 +1,15 @@
 package com.mgps.tenant;
 
+import com.mgps.user.entity.AppUser;
+import com.mgps.user.entity.UserRole;
+import com.mgps.user.entity.UserStatus;
+import com.mgps.user.service.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
+
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -17,7 +23,12 @@ class TenantIdentifierImplTest {
     
     @BeforeEach
     void setUp() {
-        tenantIdentifier = new TenantIdentifierImpl();
+        JwtService jwtService = new JwtService(
+            "test-secret-key-for-jwt-generation-1234567890-abcde",
+            3600000L,
+            7200000L
+        );
+        tenantIdentifier = new TenantIdentifierImpl(jwtService);
     }
     
     @Test
@@ -119,6 +130,32 @@ class TenantIdentifierImplTest {
         assertThat(tenantId).isEqualTo("school1");
     }
     
+    @Test
+    @DisplayName("Should resolve tenant from JWT schoolId claim")
+    void testResolveTenantFromJwtSchoolIdClaim() {
+        JwtService jwtService = new JwtService(
+            "test-secret-key-for-jwt-generation-1234567890-abcde",
+            3600000L,
+            7200000L
+        );
+
+        UUID schoolId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        AppUser user = AppUser.builder()
+            .id(UUID.randomUUID())
+            .email("admin@example.com")
+            .schoolId(schoolId)
+            .role(UserRole.PRINCIPAL)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + jwtService.generateAccessToken(user));
+
+        String tenantId = tenantIdentifier.resolveTenant(request);
+
+        assertThat(tenantId).isEqualTo(schoolId.toString());
+    }
+
     @Test
     @DisplayName("Should return null when tenant cannot be resolved")
     void testReturnNullWhenCannotResolve() {

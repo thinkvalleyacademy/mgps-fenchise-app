@@ -1,5 +1,6 @@
 package com.mgps.tenant;
 
+import com.mgps.user.service.JwtService;
 import org.springframework.stereotype.Component;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,10 +18,16 @@ import org.slf4j.LoggerFactory;
 public class TenantIdentifierImpl implements TenantIdentifier {
 
     private static final Logger log = LoggerFactory.getLogger(TenantIdentifierImpl.class);
-    
+
+    private final JwtService jwtService;
+
     private static final String TENANT_HEADER = "X-Tenant-Id";
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+
+    public TenantIdentifierImpl(JwtService jwtService) {
+        this.jwtService = jwtService;
+    }
     
     @Override
     public String resolveTenant(HttpServletRequest request) {
@@ -66,11 +73,31 @@ public class TenantIdentifierImpl implements TenantIdentifier {
      */
     private String resolveFromToken(HttpServletRequest request) {
         String authHeader = request.getHeader(AUTHORIZATION_HEADER);
-        if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
-            // In a real implementation, decode JWT and extract 'tenantId' claim
-            // For now, return null as this requires proper JWT configuration
+        if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
             return null;
         }
+
+        String token = authHeader.substring(BEARER_PREFIX.length()).trim();
+        if (token.isBlank()) {
+            return null;
+        }
+
+        try {
+            String schoolId = jwtService.extractSchoolIdAsString(token);
+            if (schoolId != null && !schoolId.isBlank()) {
+                log.debug("Tenant resolved from JWT schoolId claim: {}", schoolId);
+                return schoolId;
+            }
+
+            String tenantId = jwtService.extractTenantId(token);
+            if (tenantId != null && !tenantId.isBlank()) {
+                log.debug("Tenant resolved from JWT tenantId claim: {}", tenantId);
+                return tenantId.toLowerCase().trim();
+            }
+        } catch (Exception ex) {
+            log.debug("Could not decode JWT tenant claim", ex);
+        }
+
         return null;
     }
     

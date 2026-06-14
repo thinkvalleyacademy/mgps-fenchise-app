@@ -65,6 +65,16 @@ public class JwtService {
         return userId != null ? UUID.fromString(userId.toString()) : null;
     }
 
+    public String extractSchoolIdAsString(String token) {
+        Object schoolId = parseClaims(token).get("schoolId");
+        return schoolId != null ? schoolId.toString() : null;
+    }
+
+    public String extractTenantId(String token) {
+        Object tenantId = parseClaims(token).get("tenantId");
+        return tenantId != null ? tenantId.toString() : null;
+    }
+
     public String extractTokenId(String token) {
         Object jti = parseClaims(token).get("jti");
         return jti != null ? jti.toString() : null;
