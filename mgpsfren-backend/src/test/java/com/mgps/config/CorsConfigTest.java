@@ -20,13 +20,34 @@ class CorsConfigTest {
         String applicationDevYaml = Files.readString(Path.of("src/main/resources/application-dev.yml"));
 
         assertThat(applicationYaml)
-            .contains("allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:https://mgpsfren.thinkvalleysoftwares.in/,http://100.101.103.63:6080}");
+            .contains("allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:https://mgpsfren.thinkvalleysoftwares.in,http://100.101.103.63:6080}");
         assertThat(applicationDevYaml)
-            .contains("allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:https://mgpsfren.thinkvalleysoftwares.in/,http://100.101.103.63:6080}");
+            .contains("allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:https://mgpsfren.thinkvalleysoftwares.in,http://100.101.103.63:6080}");
         assertThat(applicationYaml)
             .doesNotContain("allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:*}");
         assertThat(applicationDevYaml)
             .doesNotContain("allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:*}");
+    }
+
+    @Test
+    void shouldNormalizeTrailingSlashInConfiguredOrigins() {
+        CorsConfig config = new CorsConfig();
+        ReflectionTestUtils.setField(config, "allowedOrigins", "https://mgpsfren.thinkvalleysoftwares.in/,http://100.101.103.63:6080");
+
+        CorsConfigurationSource source = config.corsConfigurationSource();
+
+        CorsConfiguration corsConfiguration = ((UrlBasedCorsConfigurationSource) source)
+            .getCorsConfigurations()
+            .values()
+            .iterator()
+            .next();
+
+        assertThat(corsConfiguration.getAllowedOriginPatterns())
+            .containsExactly("https://mgpsfren.thinkvalleysoftwares.in", "http://100.101.103.63:6080");
+        assertThat(corsConfiguration.checkOrigin("https://mgpsfren.thinkvalleysoftwares.in"))
+            .isEqualTo("https://mgpsfren.thinkvalleysoftwares.in");
+        assertThat(corsConfiguration.checkOrigin("http://100.101.103.63:6080"))
+            .isEqualTo("http://100.101.103.63:6080");
     }
 
     @Test
