@@ -12,6 +12,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,6 +42,19 @@ class DatabaseProvisioningServiceTest {
     void shouldUseTenantOnlyMigrationLocation() {
         assertThat(DatabaseProvisioningService.getTenantMigrationLocations())
             .containsExactly("classpath:db/migration/tenant");
+    }
+
+    @Test
+    @DisplayName("Should register tenant datasource under the school slug and school id")
+    void shouldCreateTenantAppUsersTableInMigration() throws Exception {
+        Path migrationPath = Path.of("src/main/resources/db/migration/tenant/V1__create_tenant_schema.sql");
+
+        String sql = Files.readString(migrationPath);
+
+        assertThat(sql)
+            .contains("CREATE TABLE IF NOT EXISTS app_users")
+            .contains("CREATE INDEX IF NOT EXISTS idx_app_users_email")
+            .contains("CREATE INDEX IF NOT EXISTS idx_app_users_school_id");
     }
 
     @Test

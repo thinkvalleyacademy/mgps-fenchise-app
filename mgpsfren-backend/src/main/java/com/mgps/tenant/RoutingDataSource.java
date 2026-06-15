@@ -4,7 +4,10 @@ import org.springframework.jdbc.datasource.AbstractDataSource;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -35,6 +38,7 @@ public class RoutingDataSource extends AbstractDataSource {
     @Override
     public Connection getConnection() throws SQLException {
         DataSource dataSource = determineDataSource();
+        ensureTenantAuthTable(dataSource);
         return dataSource.getConnection();
     }
     
@@ -44,12 +48,59 @@ public class RoutingDataSource extends AbstractDataSource {
     @Override
     public Connection getConnection(String username, String password) throws SQLException {
         DataSource dataSource = determineDataSource();
+        ensureTenantAuthTable(dataSource);
         return dataSource.getConnection(username, password);
     }
     
     /**
      * Determine which datasource to use based on tenant context
      */
+    private void ensureTenantAuthTable(DataSource dataSource) {
+        if (dataSource == null || dataSource == masterDataSource) {
+            return;
+        }
+
+        try (Connection connection = dataSource.getConnection()) {
+            DatabaseMetaData metaData = connection.getMetaData();
+            boolean tableExists = false;
+
+            try (ResultSet resultSet = metaData.getTables(null, "public", "app_users", new String[]{"TABLE"})) {
+                tableExists = resultSet.next();
+            }
+
+            if (!tableExists) {
+                String sql = """
+                    CREATE TABLE IF NOT EXISTS app_users (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        school_id UUID,
+                        first_name VARCHAR(100) NOT NULL,
+                        last_name VARCHAR(100) NOT NULL,
+                        email VARCHAR(255) UNIQUE NOT NULL,
+                        phone VARCHAR(20),
+                        password_hash VARCHAR(255) NOT NULL,
+                        role VARCHAR(50) NOT NULL,
+                        status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+                        last_login_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_app_users_school_id ON app_users(school_id);
+                    CREATE INDEX IF NOT EXISTS idx_app_users_email ON app_users(email);
+                    CREATE INDEX IF NOT EXISTS idx_app_users_role ON app_users(role);
+                    CREATE INDEX IF NOT EXISTS idx_app_users_status ON app_users(status);
+                    """;
+
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute(sql);
+                }
+
+                log.info("Created missing app_users table in tenant schema");
+            }
+        } catch (SQLException ex) {
+            log.warn("Unable to ensure tenant auth table exists for datasource", ex);
+        }
+    }
+
     private DataSource determineDataSource() {
         String tenantId = TenantContext.getTenant();
         
