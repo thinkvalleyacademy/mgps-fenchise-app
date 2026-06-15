@@ -157,6 +157,28 @@ class TenantIdentifierImplTest {
     }
 
     @Test
+    @DisplayName("Should keep superadmin requests on the master datasource")
+    void testSuperAdminJwtUsesMasterDatasource() {
+        JwtService jwtService = new JwtService(
+            "test-secret-key-for-jwt-generation-1234567890-abcde",
+            3600000L,
+            7200000L
+        );
+        AppUser user = AppUser.builder()
+            .id(UUID.randomUUID())
+            .email("superadmin@example.com")
+            .role(UserRole.SUPER_ADMIN)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization",
+            "Bearer " + jwtService.generateAccessToken(user, "thinkvalley_academy_fren"));
+
+        assertThat(tenantIdentifier.resolveTenant(request)).isNull();
+    }
+
+    @Test
     @DisplayName("Should return null when tenant cannot be resolved")
     void testReturnNullWhenCannotResolve() {
         // Arrange

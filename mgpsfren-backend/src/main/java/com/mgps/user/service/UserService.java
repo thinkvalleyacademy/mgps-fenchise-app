@@ -13,6 +13,9 @@ import com.mgps.user.dto.UserDtos.UserProfile;
 import com.mgps.user.dto.UserDtos.UserStatusRequest;
 import com.mgps.user.dto.UserDtos.UserUpdateRequest;
 import com.mgps.school.repository.SchoolRepository;
+import com.mgps.school.service.DatabaseProvisioningService;
+import com.mgps.tenant.RoutingDataSource;
+import com.mgps.tenant.TenantContext;
 import com.mgps.tenant.TenantNamingUtil;
 import com.mgps.user.entity.AppUser;
 import com.mgps.user.entity.UserRole;
@@ -43,29 +46,68 @@ public class UserService {
     private final JwtService jwtService;
     private final TokenRevocationService tokenRevocationService;
     private final SchoolRepository schoolRepository;
+    private final RoutingDataSource routingDataSource;
+    private final DatabaseProvisioningService databaseProvisioningService;
 
     public UserService() {
-        this(null, null, null, null, null);
+        this(null, null, null, null, null, null, null);
     }
 
     public UserService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
                        TokenRevocationService tokenRevocationService) {
-        this(appUserRepository, passwordEncoder, jwtService, tokenRevocationService, null);
+        this(appUserRepository, passwordEncoder, jwtService, tokenRevocationService, null, null, null);
     }
 
     @Autowired
     public UserService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
-                       TokenRevocationService tokenRevocationService, SchoolRepository schoolRepository) {
+                       TokenRevocationService tokenRevocationService, SchoolRepository schoolRepository,
+                       RoutingDataSource routingDataSource,
+                       DatabaseProvisioningService databaseProvisioningService) {
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.tokenRevocationService = tokenRevocationService;
         this.schoolRepository = schoolRepository;
+        this.routingDataSource = routingDataSource;
+        this.databaseProvisioningService = databaseProvisioningService;
     }
 
     public AuthResponse registerUser(RegisterUserRequest request) {
-        if (appUserRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateResourceException("User already exists with email: " + request.getEmail());
+        AppUser saved;
+        if (request.getSchoolId() == null) {
+            saved = createUser(request);
+        } else {
+            saved = createUserInTenant(request);
+        }
+
+        return buildAuthResponse(saved);
+    }
+
+    private AppUser createUserInTenant(RegisterUserRequest request) {
+        var school = schoolRepository.findById(request.getSchoolId())
+            .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+        String tenantId = school.getId().toString();
+
+        if (!routingDataSource.hasTenantDataSource(tenantId)) {
+            databaseProvisioningService.registerDataSource(routingDataSource, school);
+        }
+
+        String previousTenant = TenantContext.getTenant();
+        try {
+            TenantContext.setTenant(tenantId);
+            return createUser(request);
+        } finally {
+            TenantContext.clear();
+            if (previousTenant != null && !previousTenant.isBlank()) {
+                TenantContext.setTenant(previousTenant);
+            }
+        }
+    }
+
+    private AppUser createUser(RegisterUserRequest request) {
+        String email = request.getEmail().toLowerCase().trim();
+        if (appUserRepository.existsByEmail(email)) {
+            throw new DuplicateResourceException("User already exists with email: " + email);
         }
 
         AppUser user = AppUser.builder()
@@ -80,8 +122,7 @@ public class UserService {
             .status(UserStatus.ACTIVE)
             .build();
 
-        AppUser saved = appUserRepository.save(user);
-        return buildAuthResponse(saved);
+        return appUserRepository.save(user);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -237,7 +278,7 @@ public class UserService {
         }
 
         if (user.getRole() == UserRole.SUPER_ADMIN) {
-            return TenantNamingUtil.CLIENT_TENANT_ID;
+            return null;
         }
 
         if (user.getSchoolId() == null) {

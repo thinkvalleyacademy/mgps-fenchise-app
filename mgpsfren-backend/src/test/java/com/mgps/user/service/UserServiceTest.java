@@ -9,6 +9,11 @@ import com.mgps.user.entity.AppUser;
 import com.mgps.user.entity.UserRole;
 import com.mgps.user.entity.UserStatus;
 import com.mgps.user.repository.AppUserRepository;
+import com.mgps.school.entity.School;
+import com.mgps.school.repository.SchoolRepository;
+import com.mgps.school.service.DatabaseProvisioningService;
+import com.mgps.tenant.RoutingDataSource;
+import com.mgps.tenant.TenantContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -39,6 +45,15 @@ class UserServiceTest {
 
     private TokenRevocationService tokenRevocationService;
 
+    @Mock
+    private SchoolRepository schoolRepository;
+
+    @Mock
+    private RoutingDataSource routingDataSource;
+
+    @Mock
+    private DatabaseProvisioningService databaseProvisioningService;
+
     @InjectMocks
     private UserService userService;
 
@@ -51,7 +66,8 @@ class UserServiceTest {
             604800000L
         );
         tokenRevocationService = new TokenRevocationService();
-        userService = new UserService(appUserRepository, passwordEncoder, jwtService, tokenRevocationService);
+        userService = new UserService(appUserRepository, passwordEncoder, jwtService, tokenRevocationService,
+            schoolRepository, routingDataSource, databaseProvisioningService);
     }
 
     @Test
@@ -83,6 +99,40 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> userService.registerUser(request))
             .isInstanceOf(DuplicateResourceException.class);
+    }
+
+    @Test
+    void shouldRegisterSchoolUserInTenantDatabase() {
+        UUID schoolId = UUID.randomUUID();
+        School school = School.builder()
+            .id(schoolId)
+            .name("Tenant School")
+            .databaseName("tenant_school")
+            .build();
+        RegisterUserRequest request = new RegisterUserRequest();
+        request.setSchoolId(schoolId);
+        request.setFirstName("School");
+        request.setLastName("Admin");
+        request.setEmail("admin@tenant.test");
+        request.setPassword("Password123!");
+        request.setRole(UserRole.SCHOOL_ADMIN);
+
+        when(schoolRepository.findById(schoolId)).thenReturn(Optional.of(school));
+        when(routingDataSource.hasTenantDataSource(schoolId.toString())).thenReturn(false);
+        when(appUserRepository.existsByEmail("admin@tenant.test")).thenAnswer(invocation -> {
+            assertThat(TenantContext.getTenant()).isEqualTo(schoolId.toString());
+            return false;
+        });
+        when(appUserRepository.save(any(AppUser.class))).thenAnswer(invocation -> {
+            assertThat(TenantContext.getTenant()).isEqualTo(schoolId.toString());
+            return invocation.getArgument(0);
+        });
+
+        var response = userService.registerUser(request);
+
+        assertThat(response.getProfile().getSchoolId()).isEqualTo(schoolId);
+        assertThat(TenantContext.getTenant()).isNull();
+        verify(databaseProvisioningService).registerDataSource(routingDataSource, school);
     }
 
     @Test

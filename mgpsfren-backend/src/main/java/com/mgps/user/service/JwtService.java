@@ -84,6 +84,11 @@ public class JwtService {
         return tenantId != null ? tenantId.toString() : null;
     }
 
+    public String extractRole(String token) {
+        Object role = parseClaims(token).get("role");
+        return role != null ? role.toString() : null;
+    }
+
     public String extractTokenId(String token) {
         Object jti = parseClaims(token).get("jti");
         return jti != null ? jti.toString() : null;

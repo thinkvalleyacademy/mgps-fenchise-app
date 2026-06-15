@@ -8,8 +8,8 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +26,7 @@ public class RoutingDataSource extends AbstractDataSource {
     private static final Logger log = LoggerFactory.getLogger(RoutingDataSource.class);
     
     private DataSource masterDataSource;
-    private final Map<String, DataSource> tenantDataSources = new HashMap<>();
+    private final Map<String, DataSource> tenantDataSources = new ConcurrentHashMap<>();
     
     public RoutingDataSource(DataSource masterDataSource) {
         this.masterDataSource = masterDataSource;

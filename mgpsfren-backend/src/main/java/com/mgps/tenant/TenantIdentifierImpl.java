@@ -1,6 +1,7 @@
 package com.mgps.tenant;
 
 import com.mgps.user.service.JwtService;
+import com.mgps.user.entity.UserRole;
 import org.springframework.stereotype.Component;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -83,6 +84,12 @@ public class TenantIdentifierImpl implements TenantIdentifier {
         }
 
         try {
+            String role = jwtService.extractRole(token);
+            if (UserRole.SUPER_ADMIN.name().equals(role)) {
+                log.debug("Superadmin request resolved against master datasource");
+                return null;
+            }
+
             String tenantId = jwtService.extractTenantId(token);
             if (tenantId != null && !tenantId.isBlank()) {
                 log.debug("Tenant resolved from JWT tenantId claim: {}", tenantId);
