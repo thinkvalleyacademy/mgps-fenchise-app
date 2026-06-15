@@ -18,6 +18,7 @@ import com.mgps.user.entity.AppUser;
 import com.mgps.user.entity.UserRole;
 import com.mgps.user.entity.UserStatus;
 import com.mgps.user.repository.AppUserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,11 +44,16 @@ public class UserService {
     private final TokenRevocationService tokenRevocationService;
     private final SchoolRepository schoolRepository;
 
+    public UserService() {
+        this(null, null, null, null, null);
+    }
+
     public UserService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
                        TokenRevocationService tokenRevocationService) {
         this(appUserRepository, passwordEncoder, jwtService, tokenRevocationService, null);
     }
 
+    @Autowired
     public UserService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
                        TokenRevocationService tokenRevocationService, SchoolRepository schoolRepository) {
         this.appUserRepository = appUserRepository;
