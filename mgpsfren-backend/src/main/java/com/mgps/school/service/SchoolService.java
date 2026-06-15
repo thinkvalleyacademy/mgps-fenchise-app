@@ -54,6 +54,9 @@ public class SchoolService {
     
     @Autowired
     private RoutingDataSource routingDataSource;
+
+    @Autowired
+    private TenantSchoolDataService tenantSchoolDataService;
     
     /**
      * Register a new school
@@ -134,6 +137,7 @@ public class SchoolService {
         // Register datasource for tenant routing
         try {
             databaseProvisioningService.registerDataSource(routingDataSource, savedSchool);
+            tenantSchoolDataService.synchronizeSnapshot(savedSchool);
             log.info("Datasource registered for school: {}", schoolId);
         } catch (Exception e) {
             log.error("Failed to register datasource for school", e);
@@ -197,6 +201,7 @@ public class SchoolService {
         if (dto.getLogoUrl() != null) school.setLogoUrl(dto.getLogoUrl());
         
         School updated = schoolRepository.save(school);
+        tenantSchoolDataService.synchronizeSnapshot(updated);
         log.info("School updated successfully: {}", schoolId);
         
         return mapToDTO(updated);
@@ -213,6 +218,7 @@ public class SchoolService {
         
         school.setStatus(newStatus);
         School updated = schoolRepository.save(school);
+        tenantSchoolDataService.synchronizeSnapshot(updated);
         
         log.info("School status changed: {} -> {}", schoolId, newStatus);
         
@@ -226,6 +232,13 @@ public class SchoolService {
     public School getSchoolByDatabaseName(String databaseName) {
         return schoolRepository.findByDatabaseName(databaseName)
             .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    public TenantSchoolDataService.TenantSchoolOverview getTenantOverview(UUID schoolId) {
+        School school = schoolRepository.findById(schoolId)
+            .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+        return tenantSchoolDataService.getOverview(school);
     }
     
     /**

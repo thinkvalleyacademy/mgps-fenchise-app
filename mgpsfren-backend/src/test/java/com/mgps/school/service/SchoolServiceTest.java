@@ -54,6 +54,9 @@ class SchoolServiceTest {
     
     @Mock
     private RoutingDataSource routingDataSource;
+
+    @Mock
+    private TenantSchoolDataService tenantSchoolDataService;
     
     @InjectMocks
     private SchoolService schoolService;

@@ -90,6 +90,40 @@ CREATE INDEX IF NOT EXISTS idx_app_users_email ON app_users(email);
 CREATE INDEX IF NOT EXISTS idx_app_users_role ON app_users(role);
 CREATE INDEX IF NOT EXISTS idx_app_users_status ON app_users(status);
 
+CREATE TABLE IF NOT EXISTS tenant_school_snapshot (
+    school_id UUID PRIMARY KEY,
+    school_name VARCHAR(255) NOT NULL,
+    admin_email VARCHAR(255),
+    admin_phone VARCHAR(20),
+    city VARCHAR(100),
+    state VARCHAR(100),
+    postal_code VARCHAR(20),
+    status VARCHAR(50),
+    database_name VARCHAR(100),
+    subscription_plan_id UUID,
+    subscription_plan_name VARCHAR(100),
+    max_students INTEGER,
+    max_staff INTEGER,
+    max_users INTEGER,
+    monthly_price DECIMAL(10, 2),
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_activity_logs (
+    id UUID PRIMARY KEY,
+    school_id UUID,
+    actor_user_id UUID,
+    actor_email VARCHAR(255),
+    action VARCHAR(100) NOT NULL,
+    entity_type VARCHAR(100),
+    entity_id VARCHAR(255),
+    details JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_app_activity_logs_school_created
+    ON app_activity_logs(school_id, created_at DESC);
+
 -- Academic structure
 CREATE TABLE IF NOT EXISTS academic_years (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

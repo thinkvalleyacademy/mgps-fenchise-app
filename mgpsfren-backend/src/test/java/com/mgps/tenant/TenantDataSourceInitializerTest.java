@@ -3,6 +3,7 @@ package com.mgps.tenant;
 import com.mgps.school.entity.School;
 import com.mgps.school.repository.SchoolRepository;
 import com.mgps.school.service.DatabaseProvisioningService;
+import com.mgps.school.service.TenantSchoolDataService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -26,6 +27,9 @@ class TenantDataSourceInitializerTest {
     @Mock
     private RoutingDataSource routingDataSource;
 
+    @Mock
+    private TenantSchoolDataService tenantSchoolDataService;
+
     @Test
     void shouldRestoreExistingSchoolDatasourcesAtStartup() {
         School school = School.builder()
@@ -36,10 +40,11 @@ class TenantDataSourceInitializerTest {
         when(schoolRepository.findAll()).thenReturn(List.of(school));
 
         TenantDataSourceInitializer initializer = new TenantDataSourceInitializer(
-            schoolRepository, databaseProvisioningService, routingDataSource);
+            schoolRepository, databaseProvisioningService, routingDataSource, tenantSchoolDataService);
 
         initializer.run(null);
 
         verify(databaseProvisioningService).registerDataSource(routingDataSource, school);
+        verify(tenantSchoolDataService).synchronizeSnapshot(school);
     }
 }

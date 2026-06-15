@@ -5,7 +5,8 @@ import type {
   SuperAdminSetupPayload,
   SuperAdminStatus,
   AuthResponse,
-  AuthProfile
+  AuthProfile,
+  TenantSchoolOverview
 } from './types';
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:8080/api';
@@ -105,6 +106,10 @@ export async function getSchool(schoolId: string): Promise<SchoolSummary> {
   return request(`/schools/${schoolId}`);
 }
 
+export async function getTenantSchoolOverview(schoolId: string): Promise<TenantSchoolOverview> {
+  return request(`/schools/${schoolId}/tenant-overview`);
+}
+
 export async function updateSchool(schoolId: string, payload: Partial<SchoolRegistrationPayload>): Promise<SchoolSummary> {
   return request(`/schools/${schoolId}`, {
     method: 'PUT',
@@ -136,8 +141,9 @@ export async function updateUser(userId: string, payload: any): Promise<AuthProf
   return request(`/users/${userId}`, { method: 'PUT', body: JSON.stringify(payload) });
 }
 
-export async function deleteUser(userId: string): Promise<void> {
-  return request(`/users/${userId}`, { method: 'DELETE' });
+export async function deleteUser(userId: string, schoolId?: string): Promise<void> {
+  const path = schoolId ? `/users/${userId}?schoolId=${schoolId}` : `/users/${userId}`;
+  return request(path, { method: 'DELETE' });
 }
 
 // Academic Structure

@@ -2,6 +2,7 @@ package com.mgps.tenant;
 
 import com.mgps.school.repository.SchoolRepository;
 import com.mgps.school.service.DatabaseProvisioningService;
+import com.mgps.school.service.TenantSchoolDataService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -16,13 +17,16 @@ public class TenantDataSourceInitializer implements ApplicationRunner {
     private final SchoolRepository schoolRepository;
     private final DatabaseProvisioningService databaseProvisioningService;
     private final RoutingDataSource routingDataSource;
+    private final TenantSchoolDataService tenantSchoolDataService;
 
     public TenantDataSourceInitializer(SchoolRepository schoolRepository,
                                        DatabaseProvisioningService databaseProvisioningService,
-                                       RoutingDataSource routingDataSource) {
+                                       RoutingDataSource routingDataSource,
+                                       TenantSchoolDataService tenantSchoolDataService) {
         this.schoolRepository = schoolRepository;
         this.databaseProvisioningService = databaseProvisioningService;
         this.routingDataSource = routingDataSource;
+        this.tenantSchoolDataService = tenantSchoolDataService;
     }
 
     @Override
@@ -31,6 +35,7 @@ public class TenantDataSourceInitializer implements ApplicationRunner {
         schoolRepository.findAll().forEach(school -> {
             try {
                 databaseProvisioningService.registerDataSource(routingDataSource, school);
+                tenantSchoolDataService.synchronizeSnapshot(school);
             } catch (RuntimeException ex) {
                 log.error("Failed to restore datasource for school {} ({})",
                     school.getName(), school.getId(), ex);

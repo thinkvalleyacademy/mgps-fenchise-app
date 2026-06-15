@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import CreateSchoolForm from './components/CreateSchoolForm';
 import LoginModule from './components/LoginModule';
 import FeeManagementModule from './components/FeeManagementModule';
-import { buildSchoolPreview, checkSuperAdminStatus, createSchool, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, updateSchool, deleteSchool, registerUser, fetchUsers, updateUser, deleteUser, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures } from './api';
+import { buildSchoolPreview, checkSuperAdminStatus, createSchool, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, deleteSchool, registerUser, fetchUsers, updateUser, deleteUser, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures } from './api';
 import type {
   AuthProfile,
   SchoolRegistrationPayload,
   SchoolSummary,
   SubscriptionPlan,
+  TenantSchoolOverview,
   SuperAdminSetupPayload,
   SuperAdminStatus
 } from './types';
@@ -151,6 +152,7 @@ export default function App() {
   const [schoolView, setSchoolView] = useState<'list' | 'create' | 'edit' | 'view'>('list');
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<'overview' | 'users' | 'subscription' | 'activity'>('overview');
+  const [tenantOverview, setTenantOverview] = useState<TenantSchoolOverview | null>(null);
   const [schoolUsers, setSchoolUsers] = useState<AuthProfile[]>([]);
   const [isUsersLoading, setIsUsersLoading] = useState(false);
   const [showUserForm, setShowUserForm] = useState(false);
@@ -523,10 +525,55 @@ export default function App() {
                   </div>
                 )}
 
-                {(detailTab === 'subscription' || detailTab === 'activity') && (
-                  <div className="empty-state">
-                    <strong>Tab content coming soon</strong>
-                    <p>This section is currently under development.</p>
+                {detailTab === 'subscription' && (
+                  <div className="detail-grid">
+                    <div className="detail-item">
+                      <label>Plan</label>
+                      <p><strong>{tenantOverview?.school.subscriptionPlanName ?? 'No plan assigned'}</strong></p>
+                    </div>
+                    <div className="detail-item">
+                      <label>Monthly price</label>
+                      <p>{tenantOverview?.school.monthlyPrice ?? 0}</p>
+                    </div>
+                    <div className="detail-item">
+                      <label>Student limit</label>
+                      <p>{tenantOverview?.school.maxStudents ?? 0}</p>
+                    </div>
+                    <div className="detail-item">
+                      <label>Staff limit</label>
+                      <p>{tenantOverview?.school.maxStaff ?? 0}</p>
+                    </div>
+                    <div className="detail-item">
+                      <label>User limit</label>
+                      <p>{tenantOverview?.school.maxUsers ?? 0}</p>
+                    </div>
+                  </div>
+                )}
+
+                {detailTab === 'activity' && (
+                  <div className="table-wrap">
+                    <table className="module-table">
+                      <thead>
+                        <tr>
+                          <th>Timestamp</th>
+                          <th>Actor</th>
+                          <th>Action</th>
+                          <th>Entity</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(tenantOverview?.activity ?? []).length === 0 ? (
+                          <tr><td colSpan={4}>No tenant activity recorded.</td></tr>
+                        ) : tenantOverview?.activity.map(activity => (
+                          <tr key={activity.id}>
+                            <td>{formatDate(activity.createdAt)}</td>
+                            <td>{activity.actorEmail ?? 'System'}</td>
+                            <td>{activity.action}</td>
+                            <td>{activity.entityType ?? 'N/A'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
 
@@ -871,6 +918,16 @@ export default function App() {
     setSchoolView('view');
     setDetailTab('overview');
     loadSchoolUsers(schoolId);
+    loadTenantOverview(schoolId);
+  }
+
+  async function loadTenantOverview(schoolId: string) {
+    try {
+      setTenantOverview(await getTenantSchoolOverview(schoolId));
+    } catch (err) {
+      console.error('Failed to load tenant school information', err);
+      setTenantOverview(null);
+    }
   }
 
   async function loadSchoolUsers(schoolId: string) {
@@ -892,6 +949,7 @@ export default function App() {
     try {
       if (editingUserId) {
         await updateUser(editingUserId, {
+          schoolId: selectedSchoolId,
           firstName: userForm.firstName,
           lastName: userForm.lastName,
           email: userForm.email,
@@ -903,6 +961,7 @@ export default function App() {
       setShowUserForm(false);
       resetUserForm();
       loadSchoolUsers(selectedSchoolId);
+      loadTenantOverview(selectedSchoolId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to create user');
     } finally {
@@ -914,8 +973,9 @@ export default function App() {
     if (!window.confirm('Delete this user account?')) return;
     if (!selectedSchoolId) return;
     try {
-      await deleteUser(userId);
+      await deleteUser(userId, selectedSchoolId);
       loadSchoolUsers(selectedSchoolId);
+      loadTenantOverview(selectedSchoolId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to delete user');
     }

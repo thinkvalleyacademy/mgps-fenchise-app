@@ -9,11 +9,10 @@ import com.mgps.user.entity.AppUser;
 import com.mgps.user.entity.UserRole;
 import com.mgps.user.entity.UserStatus;
 import com.mgps.user.repository.AppUserRepository;
+import com.mgps.audit.ActivityLogService;
 import com.mgps.school.entity.School;
 import com.mgps.school.repository.SchoolRepository;
-import com.mgps.school.service.DatabaseProvisioningService;
-import com.mgps.tenant.RoutingDataSource;
-import com.mgps.tenant.TenantContext;
+import com.mgps.tenant.TenantExecutionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,12 +25,16 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.lenient;
+import org.mockito.ArgumentCaptor;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -49,10 +52,10 @@ class UserServiceTest {
     private SchoolRepository schoolRepository;
 
     @Mock
-    private RoutingDataSource routingDataSource;
+    private TenantExecutionService tenantExecutionService;
 
     @Mock
-    private DatabaseProvisioningService databaseProvisioningService;
+    private ActivityLogService activityLogService;
 
     @InjectMocks
     private UserService userService;
@@ -67,7 +70,20 @@ class UserServiceTest {
         );
         tokenRevocationService = new TokenRevocationService();
         userService = new UserService(appUserRepository, passwordEncoder, jwtService, tokenRevocationService,
-            schoolRepository, routingDataSource, databaseProvisioningService);
+            schoolRepository, tenantExecutionService, activityLogService);
+
+        lenient().when(tenantExecutionService.inMaster(any(Supplier.class)))
+            .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(0)).get());
+        lenient().when(tenantExecutionService.inTenant(any(School.class), any(Supplier.class)))
+            .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(1)).get());
+        lenient().doAnswer(invocation -> {
+            ((Runnable) invocation.getArgument(0)).run();
+            return null;
+        }).when(tenantExecutionService).inMaster(any(Runnable.class));
+        lenient().doAnswer(invocation -> {
+            ((Runnable) invocation.getArgument(1)).run();
+            return null;
+        }).when(tenantExecutionService).inTenant(any(School.class), any(Runnable.class));
     }
 
     @Test
@@ -118,21 +134,23 @@ class UserServiceTest {
         request.setRole(UserRole.SCHOOL_ADMIN);
 
         when(schoolRepository.findById(schoolId)).thenReturn(Optional.of(school));
-        when(routingDataSource.hasTenantDataSource(schoolId.toString())).thenReturn(false);
-        when(appUserRepository.existsByEmail("admin@tenant.test")).thenAnswer(invocation -> {
-            assertThat(TenantContext.getTenant()).isEqualTo(schoolId.toString());
-            return false;
-        });
-        when(appUserRepository.save(any(AppUser.class))).thenAnswer(invocation -> {
-            assertThat(TenantContext.getTenant()).isEqualTo(schoolId.toString());
-            return invocation.getArgument(0);
-        });
+        when(appUserRepository.existsByEmail("admin@tenant.test")).thenReturn(false);
+        when(appUserRepository.save(any(AppUser.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = userService.registerUser(request);
 
         assertThat(response.getProfile().getSchoolId()).isEqualTo(schoolId);
-        assertThat(TenantContext.getTenant()).isNull();
-        verify(databaseProvisioningService).registerDataSource(routingDataSource, school);
+        ArgumentCaptor<AppUser> userCaptor = ArgumentCaptor.forClass(AppUser.class);
+        verify(appUserRepository, times(2)).save(userCaptor.capture());
+        assertThat(userCaptor.getAllValues())
+            .extracting(AppUser::getId)
+            .containsOnly(userCaptor.getAllValues().get(0).getId());
+        assertThat(userCaptor.getAllValues())
+            .extracting(AppUser::getPasswordHash)
+            .containsOnly(userCaptor.getAllValues().get(0).getPasswordHash());
+        verify(activityLogService, times(2)).record(
+            any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -157,6 +175,39 @@ class UserServiceTest {
         assertThat(response.getAccessToken()).isNotBlank();
         assertThat(response.getRefreshToken()).isNotBlank();
         assertThat(response.getProfile().getEmail()).isEqualTo("admin@example.com");
+    }
+
+    @Test
+    void shouldLoginPartnerAgainstTenantDatabaseUsingSchoolCode() {
+        UUID schoolId = UUID.randomUUID();
+        School school = School.builder()
+            .id(schoolId)
+            .name("Partner School")
+            .databaseName("partner_school")
+            .build();
+        AppUser user = AppUser.builder()
+            .id(UUID.randomUUID())
+            .schoolId(schoolId)
+            .email("partner@example.com")
+            .passwordHash(passwordEncoder.encode("Password123!"))
+            .role(UserRole.SCHOOL_ADMIN)
+            .status(UserStatus.ACTIVE)
+            .build();
+        LoginRequest request = new LoginRequest();
+        request.setSchoolCode("partner_school");
+        request.setEmail("partner@example.com");
+        request.setPassword("Password123!");
+
+        when(schoolRepository.findByDatabaseNameIgnoreCase("partner_school"))
+            .thenReturn(Optional.of(school));
+        when(appUserRepository.findByEmail("partner@example.com")).thenReturn(Optional.of(user));
+        when(appUserRepository.save(any(AppUser.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = userService.login(request);
+
+        assertThat(response.getProfile().getSchoolId()).isEqualTo(schoolId);
+        assertThat(jwtService.extractTenantId(response.getAccessToken())).isEqualTo(schoolId.toString());
+        verify(tenantExecutionService).inTenant(any(School.class), any(Supplier.class));
     }
 
     @Test

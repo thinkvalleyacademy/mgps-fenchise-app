@@ -2,6 +2,8 @@ package com.mgps.user.service;
 
 import com.mgps.common.exception.DuplicateResourceException;
 import com.mgps.common.exception.ResourceNotFoundException;
+import com.mgps.audit.ActivityLogService;
+import com.mgps.school.entity.School;
 import com.mgps.user.dto.UserDtos.AuthResponse;
 import com.mgps.user.dto.UserDtos.BulkImportResult;
 import com.mgps.user.dto.UserDtos.LoginRequest;
@@ -13,9 +15,7 @@ import com.mgps.user.dto.UserDtos.UserProfile;
 import com.mgps.user.dto.UserDtos.UserStatusRequest;
 import com.mgps.user.dto.UserDtos.UserUpdateRequest;
 import com.mgps.school.repository.SchoolRepository;
-import com.mgps.school.service.DatabaseProvisioningService;
-import com.mgps.tenant.RoutingDataSource;
-import com.mgps.tenant.TenantContext;
+import com.mgps.tenant.TenantExecutionService;
 import com.mgps.tenant.TenantNamingUtil;
 import com.mgps.user.entity.AppUser;
 import com.mgps.user.entity.UserRole;
@@ -36,6 +36,7 @@ import java.time.LocalDateTime;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -46,8 +47,8 @@ public class UserService {
     private final JwtService jwtService;
     private final TokenRevocationService tokenRevocationService;
     private final SchoolRepository schoolRepository;
-    private final RoutingDataSource routingDataSource;
-    private final DatabaseProvisioningService databaseProvisioningService;
+    private final TenantExecutionService tenantExecutionService;
+    private final ActivityLogService activityLogService;
 
     public UserService() {
         this(null, null, null, null, null, null, null);
@@ -61,15 +62,15 @@ public class UserService {
     @Autowired
     public UserService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
                        TokenRevocationService tokenRevocationService, SchoolRepository schoolRepository,
-                       RoutingDataSource routingDataSource,
-                       DatabaseProvisioningService databaseProvisioningService) {
+                       TenantExecutionService tenantExecutionService,
+                       ActivityLogService activityLogService) {
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.tokenRevocationService = tokenRevocationService;
         this.schoolRepository = schoolRepository;
-        this.routingDataSource = routingDataSource;
-        this.databaseProvisioningService = databaseProvisioningService;
+        this.tenantExecutionService = tenantExecutionService;
+        this.activityLogService = activityLogService;
     }
 
     public AuthResponse registerUser(RegisterUserRequest request) {
@@ -84,49 +85,67 @@ public class UserService {
     }
 
     private AppUser createUserInTenant(RegisterUserRequest request) {
-        var school = schoolRepository.findById(request.getSchoolId())
+        School school = tenantExecutionService.inMaster(() -> schoolRepository.findById(request.getSchoolId()))
             .orElseThrow(() -> new ResourceNotFoundException("School not found"));
-        String tenantId = school.getId().toString();
 
-        if (!routingDataSource.hasTenantDataSource(tenantId)) {
-            databaseProvisioningService.registerDataSource(routingDataSource, school);
+        String email = normalizeEmail(request.getEmail());
+        boolean existsInMaster = tenantExecutionService.inMaster(() -> appUserRepository.existsByEmail(email));
+        boolean existsInTenant = tenantExecutionService.inTenant(school, () -> appUserRepository.existsByEmail(email));
+        if (existsInMaster || existsInTenant) {
+            throw new DuplicateResourceException("User already exists with email: " + email);
         }
 
-        String previousTenant = TenantContext.getTenant();
+        UUID userId = UUID.randomUUID();
+        String passwordHash = passwordEncoder.encode(request.getPassword());
+        AppUser masterUser = buildUser(request, userId, email, passwordHash);
+        AppUser tenantUser = buildUser(request, userId, email, passwordHash);
+
+        AppUser savedMaster = tenantExecutionService.inMaster(() -> appUserRepository.save(masterUser));
         try {
-            TenantContext.setTenant(tenantId);
-            return createUser(request);
-        } finally {
-            TenantContext.clear();
-            if (previousTenant != null && !previousTenant.isBlank()) {
-                TenantContext.setTenant(previousTenant);
-            }
+            AppUser savedTenant = tenantExecutionService.inTenant(school, () -> appUserRepository.save(tenantUser));
+            recordUserCreated(school, savedMaster, savedTenant);
+            return savedTenant;
+        } catch (RuntimeException ex) {
+            tenantExecutionService.inMaster(() -> appUserRepository.deleteById(savedMaster.getId()));
+            throw ex;
         }
     }
 
     private AppUser createUser(RegisterUserRequest request) {
-        String email = request.getEmail().toLowerCase().trim();
+        String email = normalizeEmail(request.getEmail());
         if (appUserRepository.existsByEmail(email)) {
             throw new DuplicateResourceException("User already exists with email: " + email);
         }
 
-        AppUser user = AppUser.builder()
-            .id(UUID.randomUUID())
-            .schoolId(request.getSchoolId())
-            .firstName(request.getFirstName())
-            .lastName(request.getLastName())
-            .email(request.getEmail().toLowerCase().trim())
-            .phone(request.getPhone())
-            .passwordHash(passwordEncoder.encode(request.getPassword()))
-            .role(request.getRole())
-            .status(UserStatus.ACTIVE)
-            .build();
-
+        AppUser user = buildUser(
+            request, UUID.randomUUID(), email, passwordEncoder.encode(request.getPassword()));
         return appUserRepository.save(user);
     }
 
+    private AppUser buildUser(RegisterUserRequest request, UUID userId, String email, String passwordHash) {
+        return AppUser.builder()
+            .id(userId)
+            .schoolId(request.getSchoolId())
+            .firstName(request.getFirstName())
+            .lastName(request.getLastName())
+            .email(email)
+            .phone(request.getPhone())
+            .passwordHash(passwordHash)
+            .role(request.getRole())
+            .status(UserStatus.ACTIVE)
+            .build();
+    }
+
     public AuthResponse login(LoginRequest request) {
-        AppUser user = appUserRepository.findByEmail(request.getEmail().toLowerCase().trim())
+        if (isPartnerLogin(request)) {
+            School school = resolveSchool(request.getSchoolCode());
+            return tenantExecutionService.inTenant(school, () -> loginAgainstCurrentDataSource(request));
+        }
+        return tenantExecutionService.inMaster(() -> loginAgainstCurrentDataSource(request));
+    }
+
+    private AuthResponse loginAgainstCurrentDataSource(LoginRequest request) {
+        AppUser user = appUserRepository.findByEmail(normalizeEmail(request.getEmail()))
             .orElseThrow(() -> new ResourceNotFoundException("Invalid email or password"));
 
         if (user.getStatus() != UserStatus.ACTIVE) {
@@ -140,6 +159,28 @@ public class UserService {
         user.setLastLoginAt(LocalDateTime.now());
         appUserRepository.save(user);
         return buildAuthResponse(user);
+    }
+
+    private boolean isPartnerLogin(LoginRequest request) {
+        return request.getSchoolCode() != null
+            && !request.getSchoolCode().isBlank()
+            && !TenantNamingUtil.CLIENT_TENANT_ID.equalsIgnoreCase(request.getSchoolCode().trim());
+    }
+
+    private School resolveSchool(String schoolCode) {
+        String normalizedCode = schoolCode.trim();
+        return tenantExecutionService.inMaster(() -> {
+            try {
+                return schoolRepository.findById(UUID.fromString(normalizedCode));
+            } catch (IllegalArgumentException ignored) {
+                return schoolRepository.findByDatabaseNameIgnoreCase(normalizedCode)
+                    .or(() -> schoolRepository.findAll().stream()
+                        .filter(school -> TenantNamingUtil.generateTenantId(
+                            school.getName(), school.getCity(), school.getPostalCode())
+                            .equalsIgnoreCase(normalizedCode))
+                        .findFirst());
+            }
+        }).orElseThrow(() -> new ResourceNotFoundException("School code not found"));
     }
 
     public AuthResponse refreshToken(RefreshRequest request) {
@@ -193,7 +234,35 @@ public class UserService {
     }
 
     public Page<UserProfile> getUsersBySchool(UUID schoolId, Pageable pageable) {
-        return appUserRepository.findBySchoolId(schoolId, pageable).map(this::toProfile);
+        School school = tenantExecutionService.inMaster(() -> schoolRepository.findById(schoolId))
+            .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+        return tenantExecutionService.inTenant(
+            school, () -> appUserRepository.findBySchoolId(schoolId, pageable).map(this::toProfile));
+    }
+
+    private void recordUserCreated(School school, AppUser masterUser, AppUser tenantUser) {
+        String actorEmail = currentActorEmail();
+        Map<String, Object> details = Map.of(
+            "email", tenantUser.getEmail(),
+            "role", tenantUser.getRole().name(),
+            "schoolName", school.getName(),
+            "subscription", school.getSubscriptionPlan() != null
+                ? school.getSubscriptionPlan().getPlanName()
+                : "NONE"
+        );
+        tenantExecutionService.inMaster(() -> activityLogService.record(
+            school.getId(), null, actorEmail, "USER_CREATED", "APP_USER", masterUser.getId(), details));
+        tenantExecutionService.inTenant(school, () -> activityLogService.record(
+            school.getId(), null, actorEmail, "USER_CREATED", "APP_USER", tenantUser.getId(), details));
+    }
+
+    private String currentActorEmail() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null ? authentication.getName() : null;
+    }
+
+    private String normalizeEmail(String email) {
+        return email.toLowerCase().trim();
     }
 
     public UserProfile updateStatus(UUID userId, UserStatusRequest request) {
@@ -204,6 +273,17 @@ public class UserService {
     }
 
     public UserProfile updateUser(UUID userId, UserUpdateRequest request) {
+        if (request.getSchoolId() == null) {
+            return updateCurrentDataSourceUser(userId, request);
+        }
+
+        School school = tenantExecutionService.inMaster(() -> schoolRepository.findById(request.getSchoolId()))
+            .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+        tenantExecutionService.inMaster(() -> updateCurrentDataSourceUser(userId, request));
+        return tenantExecutionService.inTenant(school, () -> updateCurrentDataSourceUser(userId, request));
+    }
+
+    private UserProfile updateCurrentDataSourceUser(UUID userId, UserUpdateRequest request) {
         AppUser user = appUserRepository.findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
@@ -215,6 +295,22 @@ public class UserService {
     }
 
     public void deleteUser(UUID userId) {
+        deleteUser(userId, null);
+    }
+
+    public void deleteUser(UUID userId, UUID schoolId) {
+        if (schoolId == null) {
+            deleteCurrentDataSourceUser(userId);
+            return;
+        }
+
+        School school = tenantExecutionService.inMaster(() -> schoolRepository.findById(schoolId))
+            .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+        tenantExecutionService.inTenant(school, () -> deleteCurrentDataSourceUser(userId));
+        tenantExecutionService.inMaster(() -> deleteCurrentDataSourceUser(userId));
+    }
+
+    private void deleteCurrentDataSourceUser(UUID userId) {
         AppUser user = appUserRepository.findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         appUserRepository.deleteById(userId);
@@ -285,9 +381,7 @@ public class UserService {
             return null;
         }
 
-        return schoolRepository.findById(user.getSchoolId())
-            .map(school -> TenantNamingUtil.generateTenantId(school.getName(), school.getCity(), school.getPostalCode()))
-            .orElse(null);
+        return user.getSchoolId().toString();
     }
 
     private void revokeTokenIfPresent(String token) {

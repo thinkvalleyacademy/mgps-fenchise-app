@@ -69,3 +69,36 @@ export interface SuperAdminSetupPayload {
 export interface SuperAdminStatus {
   hasSuperAdmin: boolean;
 }
+
+export interface TenantActivity {
+  id: string;
+  schoolId?: string;
+  actorEmail?: string;
+  action: string;
+  entityType?: string;
+  entityId?: string;
+  details?: string;
+  createdAt: string;
+}
+
+export interface TenantSchoolOverview {
+  school: {
+    schoolId: string;
+    schoolName: string;
+    adminEmail?: string;
+    adminPhone?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    status?: string;
+    databaseName?: string;
+    subscriptionPlanId?: string;
+    subscriptionPlanName?: string;
+    maxStudents?: number;
+    maxStaff?: number;
+    maxUsers?: number;
+    monthlyPrice?: number;
+  };
+  users: AuthProfile[];
+  activity: TenantActivity[];
+}

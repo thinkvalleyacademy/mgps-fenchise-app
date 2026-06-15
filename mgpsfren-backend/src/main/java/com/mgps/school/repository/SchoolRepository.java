@@ -31,6 +31,8 @@ public interface SchoolRepository extends JpaRepository<School, UUID> {
      * Find school by database name
      */
     Optional<School> findByDatabaseName(String databaseName);
+
+    Optional<School> findByDatabaseNameIgnoreCase(String databaseName);
     
     /**
      * Find schools by status

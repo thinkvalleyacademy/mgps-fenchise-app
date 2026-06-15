@@ -67,8 +67,9 @@ public class UserController {
 
     @DeleteMapping("/{userId}")
     @PreAuthorize("hasAuthority('USER_DELETE')")
-    public ResponseEntity<ApiResponse<?>> deleteUser(@PathVariable UUID userId) {
-        userService.deleteUser(userId);
+    public ResponseEntity<ApiResponse<?>> deleteUser(@PathVariable UUID userId,
+                                                     @RequestParam(required = false) UUID schoolId) {
+        userService.deleteUser(userId, schoolId);
         return ResponseEntity.ok(ApiResponse.success(null, "User deleted successfully"));
     }
 

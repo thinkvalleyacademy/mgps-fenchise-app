@@ -190,4 +190,14 @@ class TenantIdentifierImplTest {
         // Assert
         assertThat(tenantId).isNull();
     }
+
+    @Test
+    @DisplayName("Should leave login tenant resolution to the request school code")
+    void testLoginDoesNotUseDeploymentSubdomain() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/auth/login");
+        request.setServerName("mgpsfren.thinkvalleysoftwares.in");
+
+        assertThat(tenantIdentifier.resolveTenant(request)).isNull();
+    }
 }

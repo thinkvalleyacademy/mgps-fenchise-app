@@ -63,6 +63,13 @@ public class SchoolController {
         
         return ResponseEntity.ok(ApiResponse.success(school, "School retrieved successfully"));
     }
+
+    @GetMapping("/{schoolId}/tenant-overview")
+    public ResponseEntity<ApiResponse<?>> getTenantOverview(@PathVariable UUID schoolId) {
+        return ResponseEntity.ok(ApiResponse.success(
+            schoolService.getTenantOverview(schoolId),
+            "Tenant school information retrieved successfully"));
+    }
     
     /**
      * Get all schools with pagination

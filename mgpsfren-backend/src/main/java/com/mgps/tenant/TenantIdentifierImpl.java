@@ -32,6 +32,11 @@ public class TenantIdentifierImpl implements TenantIdentifier {
     
     @Override
     public String resolveTenant(HttpServletRequest request) {
+        if (request.getRequestURI().endsWith("/auth/login")) {
+            log.debug("Login tenant will be resolved from the schoolCode request field");
+            return null;
+        }
+
         // Priority 1: Check X-Tenant-Id header
         String tenantFromHeader = resolveFromHeader(request);
         if (tenantFromHeader != null) {

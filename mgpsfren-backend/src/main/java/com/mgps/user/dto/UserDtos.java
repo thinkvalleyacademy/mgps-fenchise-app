@@ -37,9 +37,12 @@ public class UserDtos {
     }
 
     public static class LoginRequest {
+        private String schoolCode;
         private String email;
         private String password;
 
+        public String getSchoolCode() { return schoolCode; }
+        public void setSchoolCode(String schoolCode) { this.schoolCode = schoolCode; }
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
         public String getPassword() { return password; }
@@ -71,12 +74,15 @@ public class UserDtos {
     }
 
     public static class UserUpdateRequest {
+        private UUID schoolId;
         private String firstName;
         private String lastName;
         private String email;
         private String phone;
         private UserRole role;
 
+        public UUID getSchoolId() { return schoolId; }
+        public void setSchoolId(UUID schoolId) { this.schoolId = schoolId; }
         public String getFirstName() { return firstName; }
         public void setFirstName(String firstName) { this.firstName = firstName; }
         public String getLastName() { return lastName; }
