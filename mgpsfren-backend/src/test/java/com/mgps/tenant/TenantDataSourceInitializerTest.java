@@ -44,6 +44,7 @@ class TenantDataSourceInitializerTest {
 
         initializer.run(null);
 
+        verify(databaseProvisioningService).migrateTenantSchema("existing_school");
         verify(databaseProvisioningService).registerDataSource(routingDataSource, school);
         verify(tenantSchoolDataService).synchronizeSnapshot(school);
     }

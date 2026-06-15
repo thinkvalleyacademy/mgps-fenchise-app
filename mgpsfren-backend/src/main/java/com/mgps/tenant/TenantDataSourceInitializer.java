@@ -34,6 +34,7 @@ public class TenantDataSourceInitializer implements ApplicationRunner {
         TenantContext.clear();
         schoolRepository.findAllWithSubscriptionPlan().forEach(school -> {
             try {
+                databaseProvisioningService.migrateTenantSchema(school.getDatabaseName());
                 databaseProvisioningService.registerDataSource(routingDataSource, school);
                 tenantSchoolDataService.synchronizeSnapshot(school);
             } catch (RuntimeException ex) {

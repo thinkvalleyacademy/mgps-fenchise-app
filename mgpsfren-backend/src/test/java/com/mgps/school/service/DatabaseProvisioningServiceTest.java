@@ -58,6 +58,20 @@ class DatabaseProvisioningServiceTest {
     }
 
     @Test
+    @DisplayName("Should align tenant academic tables with current entity names")
+    void shouldAlignTenantAcademicTablesWithEntities() throws Exception {
+        Path migrationPath = Path.of("src/main/resources/db/migration/tenant/V2__align_tenant_schema_with_entities.sql");
+
+        String sql = Files.readString(migrationPath);
+
+        assertThat(sql)
+            .contains("ALTER TABLE academic_years ADD COLUMN IF NOT EXISTS name VARCHAR(100)")
+            .contains("CREATE TABLE IF NOT EXISTS academic_classes")
+            .contains("ALTER TABLE academic_years ALTER COLUMN year_name DROP NOT NULL")
+            .contains("ALTER TABLE students ALTER COLUMN enrollment_date DROP NOT NULL");
+    }
+
+    @Test
     @DisplayName("Should register tenant datasource under the school slug and school id")
     void shouldRegisterTenantDatasourceForSchoolSlugAndId() {
         UUID schoolId = UUID.fromString("11111111-1111-1111-1111-111111111111");

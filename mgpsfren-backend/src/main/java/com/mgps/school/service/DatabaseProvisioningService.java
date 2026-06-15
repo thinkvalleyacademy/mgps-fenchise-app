@@ -70,7 +70,7 @@ public class DatabaseProvisioningService {
             createDatabase(databaseName);
             log.info("Database created: {}", databaseName);
 
-            initializeTenantSchema(databaseName);
+            migrateTenantSchema(databaseName);
 
             log.info("Database provisioning completed for school: {}", school.getName());
         } catch (DataAccessException e) {
@@ -197,7 +197,7 @@ public class DatabaseProvisioningService {
             .replaceAll("^-|-$", "");
     }
     
-    private void initializeTenantSchema(String databaseName) {
+    public void migrateTenantSchema(String databaseName) {
         HikariDataSource tenantDataSource = null;
 
         try {
