@@ -201,7 +201,8 @@ public class SchoolService {
         if (dto.getLogoUrl() != null) school.setLogoUrl(dto.getLogoUrl());
         
         School updated = schoolRepository.save(school);
-        tenantSchoolDataService.synchronizeSnapshot(updated);
+        School snapshotSchool = schoolRepository.findByIdWithSubscriptionPlan(schoolId).orElse(updated);
+        tenantSchoolDataService.synchronizeSnapshot(snapshotSchool);
         log.info("School updated successfully: {}", schoolId);
         
         return mapToDTO(updated);
@@ -218,7 +219,8 @@ public class SchoolService {
         
         school.setStatus(newStatus);
         School updated = schoolRepository.save(school);
-        tenantSchoolDataService.synchronizeSnapshot(updated);
+        School snapshotSchool = schoolRepository.findByIdWithSubscriptionPlan(schoolId).orElse(updated);
+        tenantSchoolDataService.synchronizeSnapshot(snapshotSchool);
         
         log.info("School status changed: {} -> {}", schoolId, newStatus);
         
@@ -236,7 +238,7 @@ public class SchoolService {
 
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public TenantSchoolDataService.TenantSchoolOverview getTenantOverview(UUID schoolId) {
-        School school = schoolRepository.findById(schoolId)
+        School school = schoolRepository.findByIdWithSubscriptionPlan(schoolId)
             .orElseThrow(() -> new ResourceNotFoundException("School not found"));
         return tenantSchoolDataService.getOverview(school);
     }

@@ -32,7 +32,7 @@ public class TenantDataSourceInitializer implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         TenantContext.clear();
-        schoolRepository.findAll().forEach(school -> {
+        schoolRepository.findAllWithSubscriptionPlan().forEach(school -> {
             try {
                 databaseProvisioningService.registerDataSource(routingDataSource, school);
                 tenantSchoolDataService.synchronizeSnapshot(school);

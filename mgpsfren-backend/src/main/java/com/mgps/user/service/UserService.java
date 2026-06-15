@@ -85,7 +85,7 @@ public class UserService {
     }
 
     private AppUser createUserInTenant(RegisterUserRequest request) {
-        School school = tenantExecutionService.inMaster(() -> schoolRepository.findById(request.getSchoolId()))
+        School school = tenantExecutionService.inMaster(() -> schoolRepository.findByIdWithSubscriptionPlan(request.getSchoolId()))
             .orElseThrow(() -> new ResourceNotFoundException("School not found"));
 
         String email = normalizeEmail(request.getEmail());

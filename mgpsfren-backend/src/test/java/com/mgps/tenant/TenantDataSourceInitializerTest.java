@@ -37,7 +37,7 @@ class TenantDataSourceInitializerTest {
             .name("Existing School")
             .databaseName("existing_school")
             .build();
-        when(schoolRepository.findAll()).thenReturn(List.of(school));
+        when(schoolRepository.findAllWithSubscriptionPlan()).thenReturn(List.of(school));
 
         TenantDataSourceInitializer initializer = new TenantDataSourceInitializer(
             schoolRepository, databaseProvisioningService, routingDataSource, tenantSchoolDataService);

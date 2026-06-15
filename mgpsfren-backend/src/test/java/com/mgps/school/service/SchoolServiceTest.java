@@ -301,6 +301,7 @@ class SchoolServiceTest {
         
         when(schoolRepository.findById(schoolId)).thenReturn(Optional.of(school));
         when(schoolRepository.save(any(School.class))).thenReturn(updatedSchool);
+        when(schoolRepository.findByIdWithSubscriptionPlan(schoolId)).thenReturn(Optional.of(updatedSchool));
         
         // Act
         SchoolDTO result = schoolService.updateSchool(schoolId, updateDTO);
@@ -311,6 +312,7 @@ class SchoolServiceTest {
         assertThat(result.getCity()).isEqualTo("Mumbai");
         
         verify(schoolRepository).findById(schoolId);
+        verify(schoolRepository).findByIdWithSubscriptionPlan(schoolId);
         verify(schoolRepository).save(any(School.class));
     }
     
@@ -326,6 +328,7 @@ class SchoolServiceTest {
         
         when(schoolRepository.findById(schoolId)).thenReturn(Optional.of(school));
         when(schoolRepository.save(any(School.class))).thenReturn(suspendedSchool);
+        when(schoolRepository.findByIdWithSubscriptionPlan(schoolId)).thenReturn(Optional.of(suspendedSchool));
         
         // Act
         SchoolDTO result = schoolService.changeStatus(schoolId, SchoolStatus.SUSPENDED);
@@ -335,6 +338,7 @@ class SchoolServiceTest {
         assertThat(result.getStatus()).isEqualTo(SchoolStatus.SUSPENDED);
         
         verify(schoolRepository).findById(schoolId);
+        verify(schoolRepository).findByIdWithSubscriptionPlan(schoolId);
         verify(schoolRepository).save(any(School.class));
     }
 }

@@ -11,6 +11,7 @@ import com.mgps.user.entity.UserStatus;
 import com.mgps.user.repository.AppUserRepository;
 import com.mgps.audit.ActivityLogService;
 import com.mgps.school.entity.School;
+import com.mgps.school.entity.SubscriptionPlan;
 import com.mgps.school.repository.SchoolRepository;
 import com.mgps.tenant.TenantExecutionService;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +24,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.math.BigDecimal;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -120,10 +123,19 @@ class UserServiceTest {
     @Test
     void shouldRegisterSchoolUserInTenantDatabase() {
         UUID schoolId = UUID.randomUUID();
+        SubscriptionPlan subscriptionPlan = SubscriptionPlan.builder()
+            .id(UUID.randomUUID())
+            .planName("STANDARD")
+            .maxStudents(500)
+            .maxStaff(50)
+            .maxUsers(75)
+            .monthlyPrice(BigDecimal.valueOf(999))
+            .build();
         School school = School.builder()
             .id(schoolId)
             .name("Tenant School")
             .databaseName("tenant_school")
+            .subscriptionPlan(subscriptionPlan)
             .build();
         RegisterUserRequest request = new RegisterUserRequest();
         request.setSchoolId(schoolId);
@@ -133,7 +145,7 @@ class UserServiceTest {
         request.setPassword("Password123!");
         request.setRole(UserRole.SCHOOL_ADMIN);
 
-        when(schoolRepository.findById(schoolId)).thenReturn(Optional.of(school));
+        when(schoolRepository.findByIdWithSubscriptionPlan(schoolId)).thenReturn(Optional.of(school));
         when(appUserRepository.existsByEmail("admin@tenant.test")).thenReturn(false);
         when(appUserRepository.save(any(AppUser.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
@@ -149,8 +161,11 @@ class UserServiceTest {
         assertThat(userCaptor.getAllValues())
             .extracting(AppUser::getPasswordHash)
             .containsOnly(userCaptor.getAllValues().get(0).getPasswordHash());
+        ArgumentCaptor<Map<String, ?>> detailsCaptor = ArgumentCaptor.forClass(Map.class);
         verify(activityLogService, times(2)).record(
-            any(), any(), any(), any(), any(), any(), any());
+            any(), any(), any(), any(), any(), any(), detailsCaptor.capture());
+        assertThat(detailsCaptor.getAllValues())
+            .allSatisfy(details -> assertThat(details.get("subscription")).isEqualTo("STANDARD"));
     }
 
     @Test
