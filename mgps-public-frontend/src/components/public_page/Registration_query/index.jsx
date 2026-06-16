@@ -62,11 +62,11 @@ const Registration_query = () => {
     }
 
     const data = await admissionQuery(formData);
-    if (data.status === 200) {
+    if (data.success) {
       toast.success("Query submitted successfully! We'll contact you soon.");
       setFormSubmitted(true);
     } else {
-      toast.error("Some error occurred. Please try again later.");
+      toast.error(data.message || "Some error occurred. Please try again later.");
     }
   };
 

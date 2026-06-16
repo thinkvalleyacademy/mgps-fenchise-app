@@ -26,11 +26,11 @@ const QuickRegistrationForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const data = await admissionQuery(formData);
-    if (data.status === 200) {
+    if (data.success) {
       toast.success("Query submitted successfully!");
       setFormSubmitted(true);
     } else {
-      toast.error("Some error occurred. Please try again later.");
+      toast.error(data.message || "Some error occurred. Please try again later.");
     }
   };
 
