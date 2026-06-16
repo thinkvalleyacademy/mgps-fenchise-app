@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import "./ChildFriendlyNav.css";
 import logo from "../Logo.png";
 import { useNavigate } from "react-router-dom";
-import { FaBars, FaTimes, FaHome, FaInfoCircle, FaBook, FaEnvelope, FaSignInAlt, FaUserPlus } from "react-icons/fa";
+import { FaBars, FaTimes, FaHome, FaInfoCircle, FaBook, FaEnvelope, FaUserPlus } from "react-icons/fa";
 
 const HomeNav = ({ isOtherOptions }) => {
   const navigate = useNavigate();
@@ -44,8 +44,6 @@ const HomeNav = ({ isOtherOptions }) => {
       }
     } else if (pageName === "gallery") {
       navigate("/gallery");
-    } else if (pageName === "login") {
-      navigate(`/login`);
     } else {
       navigate(`/${pageName}`);
     }
@@ -111,11 +109,6 @@ const HomeNav = ({ isOtherOptions }) => {
 	                      <span className="nav-icon">📸</span> Gallery
 	                    </button>
 	                  </li>
-	                  <li className="nav-menu-item" onClick={(e) => NavigatePage("login", e)}>
-	                    <button type="button" className={`nav-menu-link login-link ${activeLink === "login" ? "active" : ""}`}>
-	                      <FaSignInAlt className="nav-icon" /> Login
-	                    </button>
-	                  </li>
                   <li className="nav-menu-item">
                     <button 
                       className="nav-enroll-btn"
@@ -127,8 +120,11 @@ const HomeNav = ({ isOtherOptions }) => {
                 </>
               ) : (
                 <li className="nav-menu-item">
-                  <button className="nav-login-btn-simple" onClick={(e) => NavigatePage("login", e)}>
-                    <FaSignInAlt className="nav-icon" /> Login
+                  <button 
+                    className="nav-enroll-btn"
+                    onClick={(e) => NavigatePage("enroll", e)}
+                  >
+                    <FaUserPlus className="nav-icon" /> Enroll Now
                   </button>
                 </li>
               )}

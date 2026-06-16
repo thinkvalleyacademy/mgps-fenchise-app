@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import CreateSchoolForm from './components/CreateSchoolForm';
 import LoginModule from './components/LoginModule';
 import FeeManagementModule from './components/FeeManagementModule';
-import { buildSchoolPreview, checkSuperAdminStatus, createSchool, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, deleteSchool, registerUser, fetchUsers, updateUser, deleteUser, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures } from './api';
+import EnquiryModule from './components/EnquiryModule';
+import { buildSchoolPreview, checkSuperAdminStatus, createSchool, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, deleteSchool, registerUser, fetchUsers, updateUser, deleteUser, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures, fetchEnquiries } from './api';
 import type {
   AuthProfile,
   SchoolRegistrationPayload,
@@ -124,6 +125,9 @@ const moduleDefinitions: Record<string, { description: string }> = {
   },
   Communication: {
     description: 'Manage announcements, notices and messaging.'
+  },
+  Enquiries: {
+    description: 'View public inquiries submitted through the website.'
   }
 };
 
@@ -236,7 +240,7 @@ export default function App() {
 
   function getModulesForRole(role: string) {
     const moduleMap: Record<string, string[]> = {
-      SUPER_ADMIN: ['Dashboard', 'School Management', 'User Management', 'Subscription Management', 'Audit Logs', 'Reports'],
+      SUPER_ADMIN: ['Dashboard', 'School Management', 'User Management', 'Subscription Management', 'Enquiries', 'Audit Logs', 'Reports'],
       SCHOOL_ADMIN: ['Dashboard', 'Academic Session', 'Class Management', 'Section Management', 'Subject Management', 'User Management', 'Student Management', 'Staff Management', 'Fees', 'Attendance', 'Communication'],
       STAFF: ['Dashboard', 'Academic Structure', 'Attendance', 'Communication'],
       TEACHER: ['Dashboard', 'Timetable', 'Academic Structure', 'Communication'],
@@ -802,6 +806,9 @@ export default function App() {
             </div>
           </section>
         );
+
+      case 'Enquiries':
+        return <EnquiryModule />;
 
       case 'Timetable':
       case 'Attendance':

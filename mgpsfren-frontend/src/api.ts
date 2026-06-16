@@ -6,7 +6,8 @@ import type {
   SuperAdminStatus,
   AuthResponse,
   AuthProfile,
-  TenantSchoolOverview
+  TenantSchoolOverview,
+  Enquiry
 } from './types';
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:8080/api';
@@ -276,6 +277,17 @@ export async function fetchRecentPayments(schoolId: string): Promise<any[]> {
 
 export function buildSchoolPreview(name: string) {
   const slug = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return {
+    databaseName: slug ? `mgps_${slug}` : 'mgps_school_db',
+    subdomain: slug ? `${slug}.smsapp.com` : 'school.smsapp.com'
+  };
+}
+me
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')

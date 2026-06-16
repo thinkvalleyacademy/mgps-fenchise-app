@@ -102,3 +102,13 @@ export interface TenantSchoolOverview {
   users: AuthProfile[];
   activity: TenantActivity[];
 }
+
+export interface Enquiry {
+  id: string;
+  fullName: string;
+  email: string;
+  mobileNumber: string;
+  studentClass: string;
+  query: string;
+  createdAt: string;
+}

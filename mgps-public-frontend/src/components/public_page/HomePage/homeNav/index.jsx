@@ -32,11 +32,7 @@ const HomeNav = ({ isOtherOptions }) => {
     e.preventDefault();
   setActiveLink(pageName);
     console.log(pageName);
-    if (pageName === "login") {
-      navigate(`/login`);
-    } else {
-      navigate(`/${pageName}`);
-    }
+    navigate(`/${pageName}`);
   };
 
   return (
@@ -87,11 +83,6 @@ const HomeNav = ({ isOtherOptions }) => {
 	              Contact
 	            </button>
 	          </li>
-	          <li className="nav-item" onClick={(e) => NavigatePage("login", e)}>
-	            <button type="button" className={`nav-link home-nav-link ${activeLink === "login" ? "active" : ""}`}>
-	              Login
-	            </button>
-	          </li>
 	          <li className="nav-item" onClick={(e) => NavigatePage("registrationQuery", e)}>
 	            <button type="button" className={`nav-link home-nav-link ${activeLink === "registrationQuery" ? "active" : ""}`}>
 	              Registration
@@ -100,8 +91,8 @@ const HomeNav = ({ isOtherOptions }) => {
 	        </>
       ) : (
         <li className="nav-item">
-          <button className="login-button" onClick={(e) => NavigatePage("login", e)}>
-            <span className="icon">🔒</span> Login
+          <button className="registration-button" onClick={(e) => NavigatePage("registrationQuery", e)}>
+            Registration
           </button>
         </li>
       )}

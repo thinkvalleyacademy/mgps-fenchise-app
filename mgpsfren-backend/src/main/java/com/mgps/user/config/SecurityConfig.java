@@ -59,7 +59,9 @@ public class SecurityConfig {
                     "/subscription-plans",
                     "/subscription-plans/**",
                     "/users",
-                    "/users/**"
+                    "/users/**",
+                    "/enquiries",
+                    "/enquiries/**"
                 ).permitAll()  // Public endpoints for testing
                 .anyRequest().authenticated()
             )

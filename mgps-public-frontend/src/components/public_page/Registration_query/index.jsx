@@ -3,15 +3,12 @@ import "./style.css";
 import AboutUs from "../HomePage/aboutPage";
 import MyFooter from "../HomePage/footerComponent";
 import HomeNav from "../HomePage/homeNav";
-import { admissionQuery } from "../../../apis/Login/AuthService";
-import NotifyMsg from "../../Academics/NotifyMsg";
+import { admissionQuery } from "../../../apis/EnquiryService";
 import { ToastContainer, toast } from "react-toastify";
 import ThankYouPage from "../thankYouPage";
 import { FaWhatsapp, FaPhone, FaEnvelope, FaClock } from "react-icons/fa";
 
 const Registration_query = () => {
-  const [notificationMsg, setMsg] = useState(null);
-  const [typeOfMsg, setMsgType] = useState();
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -67,13 +64,9 @@ const Registration_query = () => {
     const data = await admissionQuery(formData);
     if (data.status === 200) {
       toast.success("Query submitted successfully! We'll contact you soon.");
-      setMsg("Query submitted successfully");
-      setMsgType("success");
       setFormSubmitted(true);
     } else {
       toast.error("Some error occurred. Please try again later.");
-      setMsg("Some error occurred, Please try again later");
-      setMsgType("error");
     }
   };
 
@@ -311,7 +304,6 @@ const Registration_query = () => {
           <MyFooter />
         </div>
       </div>
-      <NotifyMsg msg={notificationMsg} type={typeOfMsg} />
       <ToastContainer position="top-right" autoClose={3000} />
     </>
   );

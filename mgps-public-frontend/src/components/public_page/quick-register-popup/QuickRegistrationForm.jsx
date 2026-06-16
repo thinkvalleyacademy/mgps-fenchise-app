@@ -1,14 +1,11 @@
 import React, { useState } from "react";
-import { admissionQuery } from "../../../apis/Login/AuthService";
-import NotifyMsg from "../../Academics/NotifyMsg";
-import { ToastContainer } from "react-toastify";
+import { admissionQuery } from "../../../apis/EnquiryService";
+import { ToastContainer, toast } from "react-toastify";
 import ThankYouPage from "../thankYouPage";
 import "./style.css";
 import messages from "../messages.json"; // Import JSON file
 
 const QuickRegistrationForm = () => {
-  const [notificationMsg, setMsg] = useState(null);
-  const [typeOfMsg, setMsgType] = useState();
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -30,12 +27,10 @@ const QuickRegistrationForm = () => {
     e.preventDefault();
     const data = await admissionQuery(formData);
     if (data.status === 200) {
-      setMsg("Query submitted successfully");
-      setMsgType("success");
+      toast.success("Query submitted successfully!");
       setFormSubmitted(true);
     } else {
-      setMsg("Some error occurred, Please try again later");
-      setMsgType("error");
+      toast.error("Some error occurred. Please try again later.");
     }
   };
 
@@ -98,7 +93,6 @@ const QuickRegistrationForm = () => {
         </div>
         
       )}
-      <NotifyMsg msg={notificationMsg} type={typeOfMsg} />
       <ToastContainer />
     </>
   );
