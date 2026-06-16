@@ -287,14 +287,3 @@ export function buildSchoolPreview(name: string) {
     subdomain: slug ? `${slug}.smsapp.com` : 'school.smsapp.com'
   };
 }
-me
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-
-  return {
-    databaseName: slug ? `mgps_${slug}` : 'mgps_school_db',
-    subdomain: slug ? `${slug}.smsapp.com` : 'school.smsapp.com'
-  };
-}
