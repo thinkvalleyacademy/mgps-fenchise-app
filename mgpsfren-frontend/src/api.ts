@@ -287,3 +287,9 @@ export function buildSchoolPreview(name: string) {
     subdomain: slug ? `${slug}.smsapp.com` : 'school.smsapp.com'
   };
 }
+
+export async function fetchEnquiries(): Promise<Enquiry[]> {
+  const response = await request<{ content?: Enquiry[] } | Enquiry[]>('/enquiries');
+  if (Array.isArray(response)) return response;
+  return response.content ?? [];
+}
