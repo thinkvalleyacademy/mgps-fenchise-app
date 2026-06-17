@@ -1,7 +1,7 @@
 package com.mgps.config;
 
 import com.mgps.tenant.RoutingDataSource;
-import com.mgps.tenant.TenantDataSourceService;
+import com.mgps.tenant.DataSourceRegistry;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Value;
@@ -62,8 +62,10 @@ public class DataSourceConfig {
      */
     @Bean
     @Primary
-    public DataSource routingDataSource(DataSource masterDataSource) {
+    public DataSource routingDataSource(DataSource masterDataSource, DataSourceRegistry dataSourceRegistry) {
         log.info("Creating routing datasource");
-        return new RoutingDataSource(masterDataSource);
+        RoutingDataSource routingDataSource = new RoutingDataSource(masterDataSource);
+        routingDataSource.setDataSourceRegistry(dataSourceRegistry);
+        return routingDataSource;
     }
 }

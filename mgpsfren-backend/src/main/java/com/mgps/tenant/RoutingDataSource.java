@@ -1,6 +1,7 @@
 package com.mgps.tenant;
 
 import org.springframework.jdbc.datasource.AbstractDataSource;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -8,7 +9,9 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,17 +22,27 @@ import org.slf4j.LoggerFactory;
  * 
  * Routes to:
  * - Master datasource if no tenant is set
+ * - Master datasource for the fixed superadmin tenant (THINKVALLEY_ACADEMY_FREN)
  * - Tenant-specific datasource if tenant context is set
+ * - Dynamically loads tenant datasource from master if not already registered
  */
+
 public class RoutingDataSource extends AbstractDataSource {
 
     private static final Logger log = LoggerFactory.getLogger(RoutingDataSource.class);
     
-    private DataSource masterDataSource;
+    private final DataSource masterDataSource;
     private final Map<String, DataSource> tenantDataSources = new ConcurrentHashMap<>();
+    private final JdbcTemplate masterJdbcTemplate;
+    private DataSourceRegistry dataSourceRegistry;
     
     public RoutingDataSource(DataSource masterDataSource) {
         this.masterDataSource = masterDataSource;
+        this.masterJdbcTemplate = new JdbcTemplate(masterDataSource);
+    }
+    
+    public void setDataSourceRegistry(DataSourceRegistry dataSourceRegistry) {
+        this.dataSourceRegistry = dataSourceRegistry;
     }
     
     /**
@@ -108,17 +121,83 @@ public class RoutingDataSource extends AbstractDataSource {
             log.debug("No tenant context set, using master datasource");
             return masterDataSource;
         }
+
+        // Fixed tenant for superadmin ALWAYS uses master
+        if (TenantNamingUtil.CLIENT_TENANT_ID.equalsIgnoreCase(tenantId)) {
+            log.debug("Using master datasource for fixed superadmin tenant: {}", tenantId);
+            return masterDataSource;
+        }
         
         // Try to get tenant-specific datasource
         DataSource tenantDataSource = tenantDataSources.get(tenantId);
         if (tenantDataSource != null) {
-            log.debug("Using tenant datasource for: {}", tenantId);
+            log.debug("Using cached tenant datasource for: {}", tenantId);
             return tenantDataSource;
         }
         
+        // Attempt to lazy load from master database if datasource registry is available
+        if (dataSourceRegistry != null) {
+            DataSource loadedDs = tryLoadingTenantDataSource(tenantId);
+            if (loadedDs != null) {
+                return loadedDs;
+            }
+        }
+
         // If tenant datasource not found, log warning and use master
-        log.warn("Tenant datasource not found for tenant: {}, using master", tenantId);
+        log.warn("Tenant datasource not found for tenant: {}, using master as fallback", tenantId);
         return masterDataSource;
+    }
+
+    private DataSource tryLoadingTenantDataSource(String tenantId) {
+        synchronized (tenantDataSources) {
+            // Double check cache
+            DataSource ds = tenantDataSources.get(tenantId);
+            if (ds != null) return ds;
+
+            log.info("Attempting to dynamically resolve datasource for tenant: {}", tenantId);
+            
+            try {
+                String databaseName = resolveDatabaseNameFromMaster(tenantId);
+                
+                if (databaseName != null) {
+                    log.info("Resolved database name '{}' for tenant '{}'", databaseName, tenantId);
+                    DataSource tenantDataSource = dataSourceRegistry.getOrCreateDataSource(tenantId, databaseName);
+                    registerTenantDataSource(tenantId, tenantDataSource);
+                    return tenantDataSource;
+                }
+            } catch (Exception e) {
+                log.error("Failed to dynamically resolve datasource for tenant: {}", tenantId, e);
+            }
+            
+            return null;
+        }
+    }
+
+    private String resolveDatabaseNameFromMaster(String tenantId) {
+        try {
+            // 1. Try to find by UUID if tenantId is a valid UUID
+            try {
+                UUID uuid = UUID.fromString(tenantId);
+                List<String> results = masterJdbcTemplate.queryForList(
+                    "SELECT database_name FROM schools WHERE id = ?", String.class, uuid);
+                if (!results.isEmpty()) return results.get(0);
+            } catch (IllegalArgumentException ignored) {}
+
+            // 2. Try to find by database_name itself
+            List<String> results = masterJdbcTemplate.queryForList(
+                "SELECT database_name FROM schools WHERE database_name = ?", String.class, tenantId);
+            if (!results.isEmpty()) return results.get(0);
+
+            // 3. If still not found, search by admin_email which is sometimes used as an identifier
+            results = masterJdbcTemplate.queryForList(
+                "SELECT database_name FROM schools WHERE admin_email = ?", String.class, tenantId);
+            if (!results.isEmpty()) return results.get(0);
+
+            return null;
+        } catch (Exception e) {
+            log.warn("Database error while resolving tenant '{}': {}", tenantId, e.getMessage());
+            return null;
+        }
     }
     
     /**
