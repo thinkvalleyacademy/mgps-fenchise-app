@@ -11,8 +11,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Implementation of TenantIdentifier.
  * Resolves tenant from (in priority order):
- * 1. X-Tenant-Id HTTP header
- * 2. JWT token tenant claim
+ * 1. JWT token (Superadmins always use master, others use their assigned tenant)
+ * 2. X-Tenant-Id HTTP header (for public/anonymous requests or context switching)
  * 3. Subdomain extraction (school1.smsapp.com -> school1)
  */
 @Component
@@ -32,23 +32,31 @@ public class TenantIdentifierImpl implements TenantIdentifier {
     
     @Override
     public String resolveTenant(HttpServletRequest request) {
+        // Special case for login
         if (request.getRequestURI().endsWith("/auth/login")) {
-            log.debug("Login tenant will be resolved from the schoolCode request field");
             return null;
         }
 
-        // Priority 1: Check X-Tenant-Id header
+        // Priority 1: Check JWT token
+        // If a valid token is present, it dictates the context.
+        // Superadmins are global and always stay in master.
+        String tenantFromToken = resolveFromToken(request);
+        if (tenantFromToken != null) {
+            if ("MASTER".equals(tenantFromToken)) {
+                log.debug("Superadmin request resolved to master context");
+                return null;
+            }
+            log.debug("Tenant resolved from token: {}", tenantFromToken);
+            return tenantFromToken;
+        }
+        
+        // Priority 2: Check X-Tenant-Id header
+        // Useful for anonymous requests or when a superadmin wants to target a specific tenant via header
+        // Note: For superadmins, we might still want to force master here to protect the security check
         String tenantFromHeader = resolveFromHeader(request);
         if (tenantFromHeader != null) {
             log.debug("Tenant resolved from header: {}", tenantFromHeader);
             return tenantFromHeader;
-        }
-        
-        // Priority 2: Check JWT token
-        String tenantFromToken = resolveFromToken(request);
-        if (tenantFromToken != null) {
-            log.debug("Tenant resolved from token: {}", tenantFromToken);
-            return tenantFromToken;
         }
         
         // Priority 3: Check subdomain
@@ -58,7 +66,6 @@ public class TenantIdentifierImpl implements TenantIdentifier {
             return tenantFromSubdomain;
         }
         
-        log.warn("Could not resolve tenant from request");
         return null;
     }
     
@@ -74,8 +81,7 @@ public class TenantIdentifierImpl implements TenantIdentifier {
     }
     
     /**
-     * Extract tenant from JWT token (claims)
-     * Note: Full implementation would decode JWT, this is a placeholder
+     * Extract tenant or 'MASTER' from JWT token
      */
     private String resolveFromToken(HttpServletRequest request) {
         String authHeader = request.getHeader(AUTHORIZATION_HEADER);
@@ -89,25 +95,24 @@ public class TenantIdentifierImpl implements TenantIdentifier {
         }
 
         try {
+            // Check for Superadmin role first
             String role = jwtService.extractRole(token);
             if (UserRole.SUPER_ADMIN.name().equals(role)) {
-                log.debug("Superadmin request resolved against master datasource");
-                return null;
+                return "MASTER"; 
             }
 
+            // Extract assigned tenant for other roles
             String tenantId = jwtService.extractTenantId(token);
             if (tenantId != null && !tenantId.isBlank()) {
-                log.debug("Tenant resolved from JWT tenantId claim: {}", tenantId);
                 return tenantId.toLowerCase().trim();
             }
 
             String schoolId = jwtService.extractSchoolIdAsString(token);
             if (schoolId != null && !schoolId.isBlank()) {
-                log.debug("Tenant resolved from JWT schoolId claim: {}", schoolId);
                 return schoolId;
             }
         } catch (Exception ex) {
-            log.debug("Could not decode JWT tenant claim", ex);
+            log.debug("Could not resolve tenant from JWT", ex);
         }
 
         return null;
