@@ -13,10 +13,14 @@ import com.mgps.school.repository.SchoolRepository;
 import com.mgps.school.repository.SubscriptionPlanRepository;
 import com.mgps.tenant.RoutingDataSource;
 import com.mgps.tenant.TenantNamingUtil;
+import com.mgps.user.dto.UserDtos.RegisterUserRequest;
+import com.mgps.user.entity.UserRole;
+import com.mgps.user.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.slf4j.Logger;
@@ -32,7 +36,6 @@ import java.util.stream.Collectors;
  * Handles school registration, provisioning, and domain management
  */
 @Service
-@Transactional
 public class SchoolService {
 
     private static final Logger log = LoggerFactory.getLogger(SchoolService.class);
@@ -57,6 +60,9 @@ public class SchoolService {
 
     @Autowired
     private TenantSchoolDataService tenantSchoolDataService;
+
+    @Autowired
+    private UserService userService;
     
     /**
      * Register a new school
@@ -68,7 +74,9 @@ public class SchoolService {
      * 5. Provision tenant database
      * 6. Create primary domain mapping
      * 7. Register datasource for routing
+     * 8. Create school admin user in both Master and Tenant DBs
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public SchoolCreatedDTO registerSchool(SchoolRegistrationDTO dto) {
         log.info("Registering new school: {}", dto.getName());
         
@@ -142,6 +150,29 @@ public class SchoolService {
         } catch (Exception e) {
             log.error("Failed to register datasource for school", e);
             // Non-critical error, but log it
+        }
+
+        // Create School Admin User in both Master and Tenant DBs
+        try {
+            RegisterUserRequest adminRequest = new RegisterUserRequest();
+            adminRequest.setSchoolId(savedSchool.getId());
+            adminRequest.setFirstName("School");
+            adminRequest.setLastName("Admin");
+            adminRequest.setEmail(dto.getAdminEmail());
+            adminRequest.setPhone(dto.getAdminPhone());
+            adminRequest.setRole(UserRole.SCHOOL_ADMIN);
+            
+            // Use provided password or default to Admin@123
+            String password = (dto.getAdminPassword() != null && !dto.getAdminPassword().isBlank()) 
+                ? dto.getAdminPassword() 
+                : "Admin@123";
+            adminRequest.setPassword(password);
+            
+            userService.registerUser(adminRequest);
+            log.info("School admin user created for: {}", dto.getAdminEmail());
+        } catch (Exception e) {
+            log.error("Failed to create school admin user during onboarding", e);
+            // Non-critical for the school registration itself, but log the failure
         }
         
         // Return response DTO
