@@ -175,6 +175,10 @@ public class RoutingDataSource extends AbstractDataSource {
 
     private String resolveDatabaseNameFromMaster(String tenantId) {
         try {
+            // Normalize tenantId for comparison
+            String normalizedId = tenantId.trim().toLowerCase();
+            log.debug("Attempting to resolve database name for normalized tenant ID: {}", normalizedId);
+
             // 1. Try to find by UUID if tenantId is a valid UUID
             try {
                 UUID uuid = UUID.fromString(tenantId);
@@ -183,14 +187,30 @@ public class RoutingDataSource extends AbstractDataSource {
                 if (!results.isEmpty()) return results.get(0);
             } catch (IllegalArgumentException ignored) {}
 
-            // 2. Try to find by database_name itself
+            // 2. Try to find by database_name itself (Case-Insensitive)
             List<String> results = masterJdbcTemplate.queryForList(
-                "SELECT database_name FROM schools WHERE database_name = ?", String.class, tenantId);
+                "SELECT database_name FROM schools WHERE LOWER(database_name) = ?", String.class, normalizedId);
             if (!results.isEmpty()) return results.get(0);
 
-            // 3. If still not found, search by admin_email which is sometimes used as an identifier
+            // 3. Try to find via school_domains table (matches subdomain or full domain)
+            // This is crucial for subdomain-based routing (e.g., 'mgpsfren' matching 'mgpsfren.smsapp.com')
             results = masterJdbcTemplate.queryForList(
-                "SELECT database_name FROM schools WHERE admin_email = ?", String.class, tenantId);
+                "SELECT s.database_name FROM schools s " +
+                "JOIN school_domains sd ON s.id = sd.school_id " +
+                "WHERE LOWER(sd.domain_name) = ? OR LOWER(sd.domain_name) LIKE ?", 
+                String.class, normalizedId, normalizedId + ".%");
+            if (!results.isEmpty()) return results.get(0);
+
+            // 4. Try to find by school name slug (normalize both sides to ignore spaces and hyphens)
+            results = masterJdbcTemplate.queryForList(
+                "SELECT database_name FROM schools " +
+                "WHERE LOWER(REPLACE(REPLACE(name, ' ', ''), '-', '')) = REPLACE(?, '-', '')", 
+                String.class, normalizedId);
+            if (!results.isEmpty()) return results.get(0);
+
+            // 5. Search by admin_email
+            results = masterJdbcTemplate.queryForList(
+                "SELECT database_name FROM schools WHERE LOWER(admin_email) = ?", String.class, normalizedId);
             if (!results.isEmpty()) return results.get(0);
 
             return null;
