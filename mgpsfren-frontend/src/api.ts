@@ -275,6 +275,27 @@ export async function fetchRecentPayments(schoolId: string): Promise<any[]> {
   return request(`/fees/payments/recent?schoolId=${schoolId}`);
 }
 
+// Class Schedule Management
+export async function fetchSchedules(className: string, session: string): Promise<any[]> {
+  return request(`/academic/schedules?className=${className}&session=${session}`);
+}
+
+export async function createSchedule(payload: any): Promise<any> {
+  return request('/academic/schedules', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateSchedule(id: string, payload: any): Promise<any> {
+  return request(`/academic/schedules/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function deleteSchedule(id: string): Promise<void> {
+  return request(`/academic/schedules/${id}`, { method: 'DELETE' });
+}
+
+export async function duplicateSchedule(payload: { sourceClassName: string; sourceSession: string; targetClassName: string; targetSession: string }): Promise<void> {
+  return request('/academic/schedules/duplicate', { method: 'POST', body: JSON.stringify(payload) });
+}
+
 export function buildSchoolPreview(name: string) {
   const slug = name
     .trim()

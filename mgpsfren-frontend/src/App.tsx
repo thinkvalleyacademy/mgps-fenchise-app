@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, createContext, useContext } from 'react';
 import CreateSchoolForm from './components/CreateSchoolForm';
 import LoginModule from './components/LoginModule';
 import FeeManagementModule from './components/FeeManagementModule';
 import EnquiryModule from './components/EnquiryModule';
-import { buildSchoolPreview, checkSuperAdminStatus, createSchool, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, deleteSchool, registerUser, fetchUsers, updateUser, deleteUser, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures, fetchEnquiries } from './api';
+import { ClassScheduleModule } from './components/ClassScheduleModule';
+import { buildSchoolPreview, checkSuperAdminStatus, createSchool, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, deleteSchool, registerUser, fetchUsers, updateUser, deleteUser, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures, fetchEnquiries, fetchSchedules, createSchedule, updateSchedule, deleteSchedule, duplicateSchedule } from './api';
 import type {
   AuthProfile,
   SchoolRegistrationPayload,
@@ -13,6 +14,14 @@ import type {
   SuperAdminSetupPayload,
   SuperAdminStatus
 } from './types';
+
+// Auth Context
+interface AuthContextType {
+  user: AuthProfile | null;
+  token: string | null;
+}
+const AuthContext = createContext<AuthContextType>({ user: null, token: null });
+export const useAuth = () => useContext(AuthContext);
 
 const defaultPlans: SubscriptionPlan[] = [
   {
@@ -241,7 +250,7 @@ export default function App() {
   function getModulesForRole(role: string) {
     const moduleMap: Record<string, string[]> = {
       SUPER_ADMIN: ['Dashboard', 'School Management', 'User Management', 'Subscription Management', 'Enquiries', 'Audit Logs', 'Reports'],
-      SCHOOL_ADMIN: ['Dashboard', 'Academic Session', 'Class Management', 'Section Management', 'Subject Management', 'User Management', 'Student Management', 'Staff Management', 'Fees', 'Attendance', 'Communication'],
+      SCHOOL_ADMIN: ['Dashboard', 'Academic Session', 'Class Management', 'Section Management', 'Subject Management', 'User Management', 'Student Management', 'Staff Management', 'Fees', 'Timetable', 'Attendance', 'Communication'],
       STAFF: ['Dashboard', 'Academic Structure', 'Attendance', 'Communication'],
       TEACHER: ['Dashboard', 'Timetable', 'Academic Structure', 'Communication'],
       STUDENT: ['Dashboard', 'Attendance', 'Communication', 'Reports']
@@ -296,6 +305,8 @@ export default function App() {
         return <StaffManagementModule schoolId={schoolId!} />;
       case 'Fees':
         return <FeeManagementModule schoolId={schoolId!} />;
+      case 'Timetable':
+        return <ClassScheduleModule />;
       case 'School Management':
         return (
           <section className="module-panel">
@@ -810,7 +821,6 @@ export default function App() {
       case 'Enquiries':
         return <EnquiryModule />;
 
-      case 'Timetable':
       case 'Attendance':
       case 'Communication':
       case 'Academic Structure':
@@ -1165,93 +1175,95 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
-      <div className="ambient ambient-a" />
-      <div className="ambient ambient-b" />
+    <AuthContext.Provider value={{ user: authProfile, token: accessToken }}>
+      <div className="app-shell">
+        <div className="ambient ambient-a" />
+        <div className="ambient ambient-b" />
 
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">MGPS Franchise Console</p>
-          <h1>Welcome back, {authProfile.firstName}</h1>
-        </div>
-
-        <div className="topbar-status">
-          <span className="dot" />
-          <span>{`Your role: ${authProfile.role}`}</span>
-        </div>
-
-        <div className="topbar-actions">
-          <button type="button" className="secondary" onClick={logout}>
-            Logout
-          </button>
-        </div>
-      </header>
-
-      <main className="dashboard-frame">
-        <aside className="sidebar card">
-          <div className="sidebar-header">
-            <div>
-              <p className="section-label">Navigation</p>
-              <h3>Modules</h3>
-            </div>
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">MGPS Franchise Console</p>
+            <h1>Welcome back, {authProfile.firstName}</h1>
           </div>
 
-          <div className="nav-list">
-            {availableModules.map((moduleName) => (
-              <button
-                key={moduleName}
-                type="button"
-                className={`nav-item ${moduleName === selectedModule ? 'active' : ''}`}
-                onClick={() => setSelectedModule(moduleName)}
-              >
-                <span>{moduleName}</span>
-                <span>{moduleName === selectedModule ? '●' : '○'}</span>
-              </button>
-            ))}
+          <div className="topbar-status">
+            <span className="dot" />
+            <span>{`Your role: ${authProfile.role}`}</span>
           </div>
 
-          <div className="sidebar-footer">
-            <p className="section-label">Current module</p>
-            <strong>{selectedModule}</strong>
+          <div className="topbar-actions">
+            <button type="button" className="secondary" onClick={logout}>
+              Logout
+            </button>
           </div>
-        </aside>
+        </header>
 
-        <section className="module-shell">
-          <div className="module-banner card">
-            <div>
-              <p className="section-label">{selectedModule}</p>
-              <h2>{moduleDefinitions[selectedModule]?.description ?? 'Manage your selected workflow.'}</h2>
+        <main className="dashboard-frame">
+          <aside className="sidebar card">
+            <div className="sidebar-header">
+              <div>
+                <p className="section-label">Navigation</p>
+                <h3>Modules</h3>
+              </div>
             </div>
-            <span className="badge">{selectedModule}</span>
+
+            <div className="nav-list">
+              {availableModules.map((moduleName) => (
+                <button
+                  key={moduleName}
+                  type="button"
+                  className={`nav-item ${moduleName === selectedModule ? 'active' : ''}`}
+                  onClick={() => setSelectedModule(moduleName)}
+                >
+                  <span>{moduleName}</span>
+                  <span>{moduleName === selectedModule ? '●' : '○'}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="sidebar-footer">
+              <p className="section-label">Current module</p>
+              <strong>{selectedModule}</strong>
+            </div>
+          </aside>
+
+          <section className="module-shell">
+            <div className="module-banner card">
+              <div>
+                <p className="section-label">{selectedModule}</p>
+                <h2>{moduleDefinitions[selectedModule]?.description ?? 'Manage your selected workflow.'}</h2>
+              </div>
+              <span className="badge">{selectedModule}</span>
+            </div>
+
+            <div className="module-meta card">
+              <div>
+                <p className="section-label">User</p>
+                <strong>{authProfile.role}</strong>
+              </div>
+              <div>
+                <p className="section-label">Available modules</p>
+                <strong>{availableModules.length}</strong>
+              </div>
+              <div>
+                <p className="section-label">School</p>
+                <strong>{authProfile.schoolId ?? 'Master'}</strong>
+              </div>
+            </div>
+
+            {renderModuleContent()}
+          </section>
+        </main>
+
+        <footer className="footer card">
+          <div>
+            <p className="section-label">MGPS UI</p>
+            <strong>Continue building module screens one page at a time.</strong>
           </div>
-
-          <div className="module-meta card">
-            <div>
-              <p className="section-label">User</p>
-              <strong>{authProfile.role}</strong>
-            </div>
-            <div>
-              <p className="section-label">Available modules</p>
-              <strong>{availableModules.length}</strong>
-            </div>
-            <div>
-              <p className="section-label">School</p>
-              <strong>{authProfile.schoolId ?? 'Master'}</strong>
-            </div>
-          </div>
-
-          {renderModuleContent()}
-        </section>
-      </main>
-
-      <footer className="footer card">
-        <div>
-          <p className="section-label">MGPS UI</p>
-          <strong>Continue building module screens one page at a time.</strong>
-        </div>
-        <span className="hint">Phase 1 screens are now scaffolded in the dashboard navigation.</span>
-      </footer>
-    </div>
+          <span className="hint">Phase 1 screens are now scaffolded in the dashboard navigation.</span>
+        </footer>
+      </div>
+    </AuthContext.Provider>
   );
 }
 

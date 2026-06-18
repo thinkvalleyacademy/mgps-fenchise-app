@@ -75,13 +75,14 @@ public class RoutingDataSource extends AbstractDataSource {
 
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetaData metaData = connection.getMetaData();
-            boolean tableExists = false;
-
+            
+            // 1. Ensure app_users table
+            boolean userTableExists = false;
             try (ResultSet resultSet = metaData.getTables(null, "public", "app_users", new String[]{"TABLE"})) {
-                tableExists = resultSet.next();
+                userTableExists = resultSet.next();
             }
 
-            if (!tableExists) {
+            if (!userTableExists) {
                 String sql = """
                     CREATE TABLE IF NOT EXISTS app_users (
                         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -99,18 +100,45 @@ public class RoutingDataSource extends AbstractDataSource {
                     );
                     CREATE INDEX IF NOT EXISTS idx_app_users_school_id ON app_users(school_id);
                     CREATE INDEX IF NOT EXISTS idx_app_users_email ON app_users(email);
-                    CREATE INDEX IF NOT EXISTS idx_app_users_role ON app_users(role);
-                    CREATE INDEX IF NOT EXISTS idx_app_users_status ON app_users(status);
                     """;
-
                 try (Statement statement = connection.createStatement()) {
                     statement.execute(sql);
                 }
-
                 log.info("Created missing app_users table in tenant schema");
             }
+
+            // 2. Ensure class_schedules table
+            boolean scheduleTableExists = false;
+            try (ResultSet resultSet = metaData.getTables(null, "public", "class_schedules", new String[]{"TABLE"})) {
+                scheduleTableExists = resultSet.next();
+            }
+
+            if (!scheduleTableExists) {
+                String sql = """
+                    CREATE TABLE IF NOT EXISTS class_schedules (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        class_name VARCHAR(50) NOT NULL,
+                        academic_session VARCHAR(50) NOT NULL,
+                        day_of_week VARCHAR(20) NOT NULL,
+                        start_time TIME NOT NULL,
+                        end_time TIME NOT NULL,
+                        schedule_type VARCHAR(20) NOT NULL,
+                        subject VARCHAR(100),
+                        content TEXT,
+                        location VARCHAR(100),
+                        teacher_name VARCHAR(100),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_class_schedules_class_session ON class_schedules(class_name, academic_session);
+                    """;
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute(sql);
+                }
+                log.info("Created missing class_schedules table in tenant schema");
+            }
         } catch (SQLException ex) {
-            log.warn("Unable to ensure tenant auth table exists for datasource", ex);
+            log.warn("Unable to ensure tenant tables exist for datasource", ex);
         }
     }
 
