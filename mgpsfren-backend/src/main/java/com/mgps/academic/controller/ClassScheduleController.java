@@ -24,20 +24,21 @@ public class ClassScheduleController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<ClassScheduleDTO>>> getSchedules(
             @RequestParam String className,
-            @RequestParam String session) {
-        List<ClassScheduleDTO> schedules = service.getSchedules(className, session);
+            @RequestParam String session,
+            @RequestParam(required = false) Integer weekNumber) {
+        List<ClassScheduleDTO> schedules = service.getSchedules(className, session, weekNumber);
         return ResponseEntity.ok(ApiResponse.success(schedules, "Schedules retrieved successfully"));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('SCHOOL_ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<ClassScheduleDTO>> createSchedule(@RequestBody ClassScheduleDTO dto) {
         ClassScheduleDTO created = service.createSchedule(dto);
         return ResponseEntity.ok(ApiResponse.success(created, "Schedule created successfully"));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('SCHOOL_ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<ClassScheduleDTO>> updateSchedule(
             @PathVariable UUID id,
             @RequestBody ClassScheduleDTO dto) {
@@ -46,14 +47,14 @@ public class ClassScheduleController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('SCHOOL_ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteSchedule(@PathVariable UUID id) {
         service.deleteSchedule(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Schedule deleted successfully"));
     }
 
     @PostMapping("/duplicate")
-    @PreAuthorize("hasAnyAuthority('SCHOOL_ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> duplicateSchedule(@RequestBody DuplicateScheduleRequest request) {
         service.duplicateSchedule(request);
         return ResponseEntity.ok(ApiResponse.success(null, "Schedule duplicated successfully"));

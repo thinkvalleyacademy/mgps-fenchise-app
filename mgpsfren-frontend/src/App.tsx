@@ -251,9 +251,11 @@ export default function App() {
     const moduleMap: Record<string, string[]> = {
       SUPER_ADMIN: ['Dashboard', 'School Management', 'User Management', 'Subscription Management', 'Enquiries', 'Audit Logs', 'Reports'],
       SCHOOL_ADMIN: ['Dashboard', 'Academic Session', 'Class Management', 'Section Management', 'Subject Management', 'User Management', 'Student Management', 'Staff Management', 'Fees', 'Timetable', 'Attendance', 'Communication'],
-      STAFF: ['Dashboard', 'Academic Structure', 'Attendance', 'Communication'],
+      STAFF: ['Dashboard', 'Timetable', 'Academic Structure', 'Attendance', 'Communication'],
       TEACHER: ['Dashboard', 'Timetable', 'Academic Structure', 'Communication'],
-      STUDENT: ['Dashboard', 'Attendance', 'Communication', 'Reports']
+      STUDENT: ['Dashboard', 'Timetable', 'Attendance', 'Communication', 'Reports'],
+      PARENT: ['Dashboard', 'Timetable', 'Attendance', 'Communication', 'Reports'],
+      ACCOUNTANT: ['Dashboard', 'Timetable', 'Fees', 'Reports']
     };
 
     return moduleMap[role] ?? ['Dashboard'];
@@ -306,7 +308,7 @@ export default function App() {
       case 'Fees':
         return <FeeManagementModule schoolId={schoolId!} />;
       case 'Timetable':
-        return <ClassScheduleModule />;
+        return <ClassScheduleModule schoolId={schoolId!} />;
       case 'School Management':
         return (
           <section className="module-panel">

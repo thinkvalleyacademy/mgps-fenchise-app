@@ -160,8 +160,9 @@ export async function activateAcademicYear(yearId: string, schoolId: string): Pr
   return request(`/academic/years/${yearId}/activate?schoolId=${schoolId}`, { method: 'PATCH' });
 }
 
-export async function fetchClasses(schoolId: string): Promise<any[]> {
-  return request(`/academic/classes?schoolId=${schoolId}`);
+export async function fetchClasses(schoolId: string, academicYearId?: string): Promise<any[]> {
+  const query = academicYearId ? `&academicYearId=${academicYearId}` : '';
+  return request(`/academic/classes?schoolId=${schoolId}${query}`);
 }
 
 export async function createClass(payload: any): Promise<any> {
@@ -276,8 +277,9 @@ export async function fetchRecentPayments(schoolId: string): Promise<any[]> {
 }
 
 // Class Schedule Management
-export async function fetchSchedules(className: string, session: string): Promise<any[]> {
-  return request(`/academic/schedules?className=${className}&session=${session}`);
+export async function fetchSchedules(className: string, session: string, weekNumber?: number): Promise<any[]> {
+  const query = weekNumber ? `&weekNumber=${weekNumber}` : '';
+  return request(`/academic/schedules?className=${encodeURIComponent(className)}&session=${encodeURIComponent(session)}${query}`);
 }
 
 export async function createSchedule(payload: any): Promise<any> {
@@ -292,7 +294,14 @@ export async function deleteSchedule(id: string): Promise<void> {
   return request(`/academic/schedules/${id}`, { method: 'DELETE' });
 }
 
-export async function duplicateSchedule(payload: { sourceClassName: string; sourceSession: string; targetClassName: string; targetSession: string }): Promise<void> {
+export async function duplicateSchedule(payload: {
+  sourceClassName: string;
+  sourceSession: string;
+  sourceWeekNumber?: number;
+  targetClassName: string;
+  targetSession: string;
+  targetWeekNumber?: number;
+}): Promise<void> {
   return request('/academic/schedules/duplicate', { method: 'POST', body: JSON.stringify(payload) });
 }
 

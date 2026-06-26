@@ -10,5 +10,6 @@ import java.util.UUID;
 @Repository
 public interface ClassScheduleRepository extends JpaRepository<ClassSchedule, UUID> {
     List<ClassSchedule> findByClassNameAndAcademicSession(String className, String academicSession);
+    List<ClassSchedule> findByClassNameAndAcademicSessionAndWeekNumber(String className, String academicSession, Integer weekNumber);
     void deleteByClassNameAndAcademicSession(String className, String academicSession);
 }

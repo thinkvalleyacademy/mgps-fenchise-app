@@ -26,6 +26,9 @@ public class ClassSchedule {
     @Column(name = "academic_session", nullable = false, length = 50)
     private String academicSession;
 
+    @Column(name = "week_number", nullable = false)
+    private Integer weekNumber = 1;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "day_of_week", nullable = false, length = 20)
     private DayOfWeek dayOfWeek;
@@ -69,6 +72,8 @@ public class ClassSchedule {
     public void setClassName(String className) { this.className = className; }
     public String getAcademicSession() { return academicSession; }
     public void setAcademicSession(String academicSession) { this.academicSession = academicSession; }
+    public Integer getWeekNumber() { return weekNumber; }
+    public void setWeekNumber(Integer weekNumber) { this.weekNumber = weekNumber; }
     public DayOfWeek getDayOfWeek() { return dayOfWeek; }
     public void setDayOfWeek(DayOfWeek dayOfWeek) { this.dayOfWeek = dayOfWeek; }
     public LocalTime getStartTime() { return startTime; }

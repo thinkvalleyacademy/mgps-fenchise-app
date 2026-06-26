@@ -28,7 +28,7 @@ public class AcademicStructureController {
     }
 
     @GetMapping("/years")
-    @PreAuthorize("hasAuthority('ACADEMIC_MANAGE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<?>> getAcademicYears(@RequestParam UUID schoolId) {
         return ResponseEntity.ok(ApiResponse.success(academicStructureService.getAcademicYears(schoolId), "Academic years retrieved successfully"));
     }
@@ -47,7 +47,7 @@ public class AcademicStructureController {
     }
 
     @GetMapping("/classes")
-    @PreAuthorize("hasAuthority('ACADEMIC_MANAGE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<?>> getClasses(@RequestParam UUID schoolId,
                                                      @RequestParam(required = false) UUID academicYearId) {
         return ResponseEntity.ok(ApiResponse.success(academicStructureService.getAcademicClasses(schoolId, academicYearId), "Classes retrieved successfully"));
@@ -87,7 +87,7 @@ public class AcademicStructureController {
     }
 
     @GetMapping("/subjects")
-    @PreAuthorize("hasAuthority('ACADEMIC_MANAGE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<?>> getSubjects(@RequestParam UUID classId) {
         return ResponseEntity.ok(ApiResponse.success(academicStructureService.getSubjects(classId), "Subjects retrieved successfully"));
     }

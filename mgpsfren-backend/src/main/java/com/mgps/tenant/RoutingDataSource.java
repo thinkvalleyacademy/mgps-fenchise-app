@@ -119,6 +119,7 @@ public class RoutingDataSource extends AbstractDataSource {
                         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                         class_name VARCHAR(50) NOT NULL,
                         academic_session VARCHAR(50) NOT NULL,
+                        week_number INTEGER NOT NULL DEFAULT 1,
                         day_of_week VARCHAR(20) NOT NULL,
                         start_time TIME NOT NULL,
                         end_time TIME NOT NULL,
@@ -131,11 +132,20 @@ public class RoutingDataSource extends AbstractDataSource {
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
                     CREATE INDEX IF NOT EXISTS idx_class_schedules_class_session ON class_schedules(class_name, academic_session);
+                    CREATE INDEX IF NOT EXISTS idx_class_schedules_class_session_week ON class_schedules(class_name, academic_session, week_number);
                     """;
                 try (Statement statement = connection.createStatement()) {
                     statement.execute(sql);
                 }
                 log.info("Created missing class_schedules table in tenant schema");
+            }
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("""
+                    ALTER TABLE class_schedules
+                        ADD COLUMN IF NOT EXISTS week_number INTEGER NOT NULL DEFAULT 1;
+                    CREATE INDEX IF NOT EXISTS idx_class_schedules_class_session_week
+                        ON class_schedules(class_name, academic_session, week_number);
+                    """);
             }
         } catch (SQLException ex) {
             log.warn("Unable to ensure tenant tables exist for datasource", ex);
