@@ -3,6 +3,7 @@ package com.mgps.fee.service;
 import com.mgps.academic.entity.AcademicYear;
 import com.mgps.academic.repository.AcademicClassRepository;
 import com.mgps.academic.repository.AcademicYearRepository;
+import com.mgps.common.exception.BusinessLogicException;
 import com.mgps.fee.dto.FeeCategoryDTO;
 import com.mgps.fee.dto.FeePaymentDTO;
 import com.mgps.fee.dto.FeeReportDTOs.*;
@@ -79,6 +80,10 @@ public class FeeService {
     // --- Fee Structure Operations ---
 
     public FeeStructureDTO createStructure(FeeStructureDTO dto) {
+        if (dto.getClassId() == null) {
+            throw new BusinessLogicException("Target Class is required");
+        }
+
         FeeCategory category = categoryRepository.findById(dto.getFeeCategoryId())
                 .orElseThrow(() -> new RuntimeException("Fee Category not found"));
 

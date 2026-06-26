@@ -134,8 +134,7 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
         ...structureForm,
         schoolId,
         academicYearId: selectedYearId,
-        amount: parseFloat(structureForm.amount),
-        classId: structureForm.classId === '' ? null : structureForm.classId
+        amount: parseFloat(structureForm.amount)
       });
       setStructureForm({ feeCategoryId: '', amount: '', dueDate: '', classId: '', isDefault: true, recurrenceType: 'ONE_TIME' });
       loadStructures();
@@ -369,9 +368,9 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                 <input type="date" value={structureForm.dueDate} onChange={e => setStructureForm({ ...structureForm, dueDate: e.target.value })} required />
               </label>
               <label>
-                Target Class (Optional)
-                <select value={structureForm.classId} onChange={e => setStructureForm({ ...structureForm, classId: e.target.value })}>
-                  <option value="">All Classes</option>
+                Target Class
+                <select value={structureForm.classId} onChange={e => setStructureForm({ ...structureForm, classId: e.target.value })} required>
+                  <option value="">Select Class</option>
                   {classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
                 </select>
               </label>
