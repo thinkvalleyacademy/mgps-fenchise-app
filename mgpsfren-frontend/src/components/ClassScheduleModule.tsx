@@ -11,14 +11,23 @@ interface ScheduleSlot {
   className: string;
   academicSession: string;
   weekNumber: number;
+  periodName: string;
   dayOfWeek: string;
   startTime: string;
   endTime: string;
   scheduleType: 'CORE' | 'ACTIVITY' | 'HOLIDAY';
   subject?: string;
   content?: string;
-  location?: string;
-  teacherName?: string;
+}
+
+interface SchedulePeriod {
+  id?: string;
+  className: string;
+  academicSession: string;
+  periodName: string;
+  displayOrder: number;
+  startTime: string;
+  endTime: string;
 }
 
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
@@ -27,9 +36,8 @@ const WEEKS = Array.from({ length: 52 }, (_, index) => index + 1);
 function defaultSlot(dayOfWeek = 'MONDAY'): Partial<ScheduleSlot> {
   return {
     weekNumber: 1,
+    periodName: '',
     dayOfWeek,
-    startTime: '09:00',
-    endTime: '10:00',
     scheduleType: 'CORE',
     subject: ''
   };
@@ -42,6 +50,7 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
   const [selectedYearId, setSelectedYearId] = useState('');
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedWeek, setSelectedWeek] = useState(1);
@@ -52,6 +61,12 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingSlot, setEditingSlot] = useState<ScheduleSlot | null>(null);
   const [formData, setFormData] = useState<Partial<ScheduleSlot>>(defaultSlot());
+  const [periodForm, setPeriodForm] = useState({
+    periodName: '',
+    displayOrder: '',
+    startTime: '09:00',
+    endTime: '10:00'
+  });
 
   const [showDuplicate, setShowDuplicate] = useState(false);
   const [duplicateData, setDuplicateData] = useState({
@@ -116,6 +131,7 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
   useEffect(() => {
     if (!selectedClassId) {
       setSubjects([]);
+      setPeriods([]);
       setSchedules([]);
       return;
     }
@@ -135,10 +151,39 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
   }, [selectedClassId]);
 
   useEffect(() => {
+    if (!className || !sessionName) {
+      setPeriods([]);
+      return;
+    }
+
+    let active = true;
+    api.fetchSchedulePeriods(className, sessionName)
+      .then(items => {
+        if (active) setPeriods(items);
+      })
+      .catch(() => {
+        if (active) setError('Failed to load configured periods');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [className, sessionName]);
+
+  useEffect(() => {
     if (className && sessionName) {
       loadSchedules(className, sessionName, selectedWeek);
     }
   }, [className, sessionName, selectedWeek]);
+
+  useEffect(() => {
+    const nextOrder = periods.length + 1;
+    setPeriodForm(current => ({
+      ...current,
+      periodName: current.periodName || `P${nextOrder}`,
+      displayOrder: current.displayOrder || String(nextOrder)
+    }));
+  }, [periods.length]);
 
   async function loadSchedules(currentClassName = className, currentSession = sessionName, currentWeek = selectedWeek) {
     setLoading(true);
@@ -162,7 +207,9 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
       className,
       academicSession: sessionName,
       weekNumber: selectedWeek,
-      subject: formData.scheduleType === 'HOLIDAY' ? '' : formData.subject
+      subject: formData.scheduleType === 'HOLIDAY' ? '' : formData.subject,
+      teacherName: null,
+      location: null
     };
 
     try {
@@ -216,10 +263,52 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
     }
   }
 
+  async function handleSavePeriod(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isAdmin || !className || !sessionName) return;
+
+    try {
+      await api.saveSchedulePeriod({
+        className,
+        academicSession: sessionName,
+        periodName: periodForm.periodName,
+        displayOrder: Number(periodForm.displayOrder) || undefined,
+        startTime: periodForm.startTime,
+        endTime: periodForm.endTime
+      });
+      setPeriodForm({
+        periodName: `P${periods.length + 2}`,
+        displayOrder: String(periods.length + 2),
+        startTime: periodForm.endTime,
+        endTime: periodForm.endTime
+      });
+      const items = await api.fetchSchedulePeriods(className, sessionName);
+      setPeriods(items);
+      setError(null);
+    } catch {
+      setError('Failed to save period configuration');
+    }
+  }
+
+  async function handleDeletePeriod(id: string) {
+    if (!isAdmin || !window.confirm('Delete this period?')) return;
+    try {
+      await api.deleteSchedulePeriod(id);
+      const items = await api.fetchSchedulePeriods(className, sessionName);
+      setPeriods(items);
+    } catch {
+      setError('Failed to delete period');
+    }
+  }
+
   function openSlotForm(dayOfWeek: string, slot?: ScheduleSlot) {
     if (!isAdmin) return;
+    if (!slot && periods.length === 0) {
+      setError('Configure periods for this class before adding timetable slots');
+      return;
+    }
     setEditingSlot(slot || null);
-    setFormData(slot ? { ...slot } : { ...defaultSlot(dayOfWeek), weekNumber: selectedWeek });
+    setFormData(slot ? { ...slot } : { ...defaultSlot(dayOfWeek), weekNumber: selectedWeek, periodName: periods[0]?.periodName || '' });
     setShowForm(true);
   }
 
@@ -243,10 +332,9 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
                 {daySlots.map(slot => (
                   <div key={slot.id} className={`slot-card type-${slot.scheduleType.toLowerCase()}`}>
                     <div className="slot-time">{slot.startTime} - {slot.endTime}</div>
+                    <div className="slot-period">{slot.periodName}</div>
                     <div className="slot-subject">{slot.subject || slot.scheduleType}</div>
                     {slot.content ? <div className="slot-content">{slot.content}</div> : null}
-                    {slot.teacherName ? <div className="slot-meta">{slot.teacherName}</div> : null}
-                    {slot.location ? <div className="slot-meta">{slot.location}</div> : null}
                     {isAdmin && (
                       <div className="slot-actions">
                         <button type="button" onClick={() => openSlotForm(day, slot)}>Edit</button>
@@ -311,6 +399,70 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
+      {isAdmin && className && sessionName && (
+        <div className="period-setup">
+          <div className="period-header">
+            <div>
+              <p className="section-label">Period Setup</p>
+              <h3>Configure periods for {className}</h3>
+            </div>
+          </div>
+          <form className="period-form" onSubmit={handleSavePeriod}>
+            <label>
+              Period
+              <input
+                type="text"
+                value={periodForm.periodName}
+                onChange={e => setPeriodForm({ ...periodForm, periodName: e.target.value })}
+                placeholder="P1"
+                required
+              />
+            </label>
+            <label>
+              Order
+              <input
+                type="number"
+                min="1"
+                value={periodForm.displayOrder}
+                onChange={e => setPeriodForm({ ...periodForm, displayOrder: e.target.value })}
+                required
+              />
+            </label>
+            <label>
+              Start
+              <input
+                type="time"
+                value={periodForm.startTime}
+                onChange={e => setPeriodForm({ ...periodForm, startTime: e.target.value })}
+                required
+              />
+            </label>
+            <label>
+              End
+              <input
+                type="time"
+                value={periodForm.endTime}
+                onChange={e => setPeriodForm({ ...periodForm, endTime: e.target.value })}
+                required
+              />
+            </label>
+            <button type="submit" className="primary">Save Period</button>
+          </form>
+          <div className="period-list">
+            {periods.length === 0 ? (
+              <span className="hint">No periods configured yet.</span>
+            ) : (
+              periods.map(period => (
+                <div key={period.id || period.periodName} className="period-chip">
+                  <strong>{period.periodName}</strong>
+                  <span>{period.startTime} - {period.endTime}</span>
+                  {period.id && <button type="button" onClick={() => handleDeletePeriod(period.id!)}>Delete</button>}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
       {loading ? <p>Loading...</p> : renderGrid()}
 
       {showForm && isAdmin && (
@@ -324,15 +476,16 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
                   {DAYS.map(day => <option key={day} value={day}>{day}</option>)}
                 </select>
               </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Start Time</label>
-                  <input type="time" value={formData.startTime || ''} onChange={e => setFormData({ ...formData, startTime: e.target.value })} required />
-                </div>
-                <div className="form-group">
-                  <label>End Time</label>
-                  <input type="time" value={formData.endTime || ''} onChange={e => setFormData({ ...formData, endTime: e.target.value })} required />
-                </div>
+              <div className="form-group">
+                <label>Period</label>
+                <select value={formData.periodName || ''} onChange={e => setFormData({ ...formData, periodName: e.target.value })} required>
+                  <option value="">Select Period</option>
+                  {periods.map(period => (
+                    <option key={period.id || period.periodName} value={period.periodName}>
+                      {period.periodName} ({period.startTime} - {period.endTime})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label>Type</label>
@@ -357,16 +510,6 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
                   <input type="text" value={formData.subject || ''} onChange={e => setFormData({ ...formData, subject: e.target.value })} required />
                 </div>
               )}
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Teacher</label>
-                  <input type="text" value={formData.teacherName || ''} onChange={e => setFormData({ ...formData, teacherName: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label>Room</label>
-                  <input type="text" value={formData.location || ''} onChange={e => setFormData({ ...formData, location: e.target.value })} />
-                </div>
-              </div>
               <div className="form-group">
                 <label>Content / Description</label>
                 <textarea value={formData.content || ''} onChange={e => setFormData({ ...formData, content: e.target.value })} />
@@ -412,6 +555,15 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
         .schedule-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .schedule-filters select { min-width: 150px; }
         .schedule-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; }
+        .period-setup { border: 1px solid rgba(148, 163, 184, 0.28); border-radius: 8px; padding: 14px; margin-bottom: 14px; background: rgba(15, 23, 42, 0.18); }
+        .period-header h3 { margin: 0 0 12px; color: var(--text); }
+        .period-form { display: grid; grid-template-columns: minmax(100px, 1fr) 90px 130px 130px auto; gap: 10px; align-items: end; }
+        .period-form label { color: var(--muted); font-size: 0.86rem; font-weight: 700; }
+        .period-form input { width: 100%; margin-top: 5px; padding: 9px; border-radius: 6px; border: 1px solid rgba(148, 163, 184, 0.45); background: rgba(255, 255, 255, 0.95); color: #0f172a; }
+        .period-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .period-chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(148, 163, 184, 0.25); color: var(--text); }
+        .period-chip span { color: var(--muted); }
+        .period-chip button { border: 1px solid rgba(248, 113, 113, 0.5); background: rgba(248, 113, 113, 0.12); color: #fecaca; border-radius: 6px; padding: 4px 7px; cursor: pointer; }
         .schedule-grid { border: 1px solid rgba(148, 163, 184, 0.28); border-radius: 8px; overflow: hidden; background: rgba(15, 23, 42, 0.18); }
         .day-row { display: grid; grid-template-columns: 126px 1fr; border-bottom: 1px solid rgba(148, 163, 184, 0.2); min-height: 104px; }
         .day-row:last-child { border-bottom: 0; }
@@ -422,6 +574,7 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
         .type-activity { border-left-color: #16a34a; background: #ecfdf5; }
         .type-holiday { border-left-color: #ea580c; background: #fff7ed; }
         .slot-time { font-weight: 800; margin-bottom: 5px; }
+        .slot-period { display: inline-flex; margin-bottom: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(15, 23, 42, 0.1); color: #0f172a; font-size: 0.78rem; font-weight: 800; }
         .slot-subject { font-weight: 700; color: #111827; }
         .slot-content, .slot-meta { margin-top: 5px; color: #475569; font-size: 0.86rem; }
         .slot-actions { margin-top: 10px; display: flex; gap: 6px; }
@@ -438,6 +591,7 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
         .schedule-modal textarea { min-height: 82px; resize: vertical; }
         .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
         @media (max-width: 720px) {
+          .period-form { grid-template-columns: 1fr; }
           .day-row { grid-template-columns: 1fr; }
           .day-label { border-right: 0; border-bottom: 1px solid rgba(148, 163, 184, 0.2); }
           .slot-card { width: 100%; }

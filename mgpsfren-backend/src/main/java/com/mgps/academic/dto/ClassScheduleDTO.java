@@ -10,6 +10,7 @@ public class ClassScheduleDTO {
     private String className;
     private String academicSession;
     private Integer weekNumber;
+    private String periodName;
     private DayOfWeek dayOfWeek;
     private LocalTime startTime;
     private LocalTime endTime;
@@ -28,6 +29,8 @@ public class ClassScheduleDTO {
     public void setAcademicSession(String academicSession) { this.academicSession = academicSession; }
     public Integer getWeekNumber() { return weekNumber; }
     public void setWeekNumber(Integer weekNumber) { this.weekNumber = weekNumber; }
+    public String getPeriodName() { return periodName; }
+    public void setPeriodName(String periodName) { this.periodName = periodName; }
     public DayOfWeek getDayOfWeek() { return dayOfWeek; }
     public void setDayOfWeek(DayOfWeek dayOfWeek) { this.dayOfWeek = dayOfWeek; }
     public LocalTime getStartTime() { return startTime; }

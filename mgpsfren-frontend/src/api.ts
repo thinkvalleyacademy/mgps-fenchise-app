@@ -286,6 +286,18 @@ export async function createSchedule(payload: any): Promise<any> {
   return request('/academic/schedules', { method: 'POST', body: JSON.stringify(payload) });
 }
 
+export async function fetchSchedulePeriods(className: string, session: string): Promise<any[]> {
+  return request(`/academic/schedules/periods?className=${encodeURIComponent(className)}&session=${encodeURIComponent(session)}`);
+}
+
+export async function saveSchedulePeriod(payload: any): Promise<any> {
+  return request('/academic/schedules/periods', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function deleteSchedulePeriod(id: string): Promise<void> {
+  return request(`/academic/schedules/periods/${id}`, { method: 'DELETE' });
+}
+
 export async function updateSchedule(id: string, payload: any): Promise<any> {
   return request(`/academic/schedules/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
 }

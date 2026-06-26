@@ -1,20 +1,21 @@
 package com.mgps.academic.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.UUID;
 
-/**
- * Entity representing a single slot in a class schedule.
- */
 @Entity
-@Table(name = "class_schedules")
-public class ClassSchedule {
+@Table(name = "class_schedule_periods")
+public class ClassSchedulePeriod {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -26,37 +27,17 @@ public class ClassSchedule {
     @Column(name = "academic_session", nullable = false, length = 50)
     private String academicSession;
 
-    @Column(name = "week_number", nullable = false)
-    private Integer weekNumber = 1;
-
     @Column(name = "period_name", nullable = false, length = 20)
     private String periodName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "day_of_week", nullable = false, length = 20)
-    private DayOfWeek dayOfWeek;
+    @Column(name = "display_order", nullable = false)
+    private Integer displayOrder;
 
     @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
 
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "schedule_type", nullable = false, length = 20)
-    private ScheduleType scheduleType;
-
-    @Column(length = 100)
-    private String subject;
-
-    @Column(columnDefinition = "TEXT")
-    private String content;
-
-    @Column(length = 100)
-    private String location;
-
-    @Column(name = "teacher_name", length = 100)
-    private String teacherName;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -66,35 +47,20 @@ public class ClassSchedule {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public ClassSchedule() {
-    }
-
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
     public String getClassName() { return className; }
     public void setClassName(String className) { this.className = className; }
     public String getAcademicSession() { return academicSession; }
     public void setAcademicSession(String academicSession) { this.academicSession = academicSession; }
-    public Integer getWeekNumber() { return weekNumber; }
-    public void setWeekNumber(Integer weekNumber) { this.weekNumber = weekNumber; }
     public String getPeriodName() { return periodName; }
     public void setPeriodName(String periodName) { this.periodName = periodName; }
-    public DayOfWeek getDayOfWeek() { return dayOfWeek; }
-    public void setDayOfWeek(DayOfWeek dayOfWeek) { this.dayOfWeek = dayOfWeek; }
+    public Integer getDisplayOrder() { return displayOrder; }
+    public void setDisplayOrder(Integer displayOrder) { this.displayOrder = displayOrder; }
     public LocalTime getStartTime() { return startTime; }
     public void setStartTime(LocalTime startTime) { this.startTime = startTime; }
     public LocalTime getEndTime() { return endTime; }
     public void setEndTime(LocalTime endTime) { this.endTime = endTime; }
-    public ScheduleType getScheduleType() { return scheduleType; }
-    public void setScheduleType(ScheduleType scheduleType) { this.scheduleType = scheduleType; }
-    public String getSubject() { return subject; }
-    public void setSubject(String subject) { this.subject = subject; }
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
-    public String getLocation() { return location; }
-    public void setLocation(String location) { this.location = location; }
-    public String getTeacherName() { return teacherName; }
-    public void setTeacherName(String teacherName) { this.teacherName = teacherName; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }
