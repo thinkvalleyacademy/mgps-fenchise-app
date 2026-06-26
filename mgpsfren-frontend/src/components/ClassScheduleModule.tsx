@@ -255,8 +255,10 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
         targetSession: sessionName,
         targetWeekNumber: duplicateData.targetWeekNumber
       });
+      setSelectedClassId(targetClass.classId);
+      setSelectedWeek(duplicateData.targetWeekNumber);
       setShowDuplicate(false);
-      setDuplicateData({ targetClassId: '', targetWeekNumber: selectedWeek });
+      setDuplicateData({ targetClassId: '', targetWeekNumber: duplicateData.targetWeekNumber });
       setError(null);
     } catch {
       setError('Failed to duplicate timetable');
