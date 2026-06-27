@@ -67,12 +67,31 @@ public class ClassScheduleService {
     public void duplicateSchedule(DuplicateScheduleRequest request) {
         int sourceWeekNumber = normalizeWeekNumber(request.getSourceWeekNumber());
         int targetWeekNumber = normalizeWeekNumber(request.getTargetWeekNumber());
+
+        if (isBlank(request.getSourceClassName()) || isBlank(request.getSourceSession()) ||
+                isBlank(request.getTargetClassName()) || isBlank(request.getTargetSession())) {
+            throw new BusinessLogicException("All source and target fields are required for duplication");
+        }
+
         List<ClassSchedule> sourceSchedules = repository.findByClassNameAndAcademicSessionAndWeekNumber(
                 request.getSourceClassName(), request.getSourceSession(), sourceWeekNumber);
-        
-        // Clear target schedules if they exist or just append? User said "duplicate it so it will be easy to create new"
-        // Usually, duplication implies starting fresh or adding to. Let's append but could be changed to overwrite.
-        
+
+        if (sourceSchedules.isEmpty()) {
+            throw new ResourceNotFoundException("No schedules found to duplicate for source week");
+        }
+
+        if (request.getSourceClassName().equals(request.getTargetClassName())
+                && request.getSourceSession().equals(request.getTargetSession())
+                && sourceWeekNumber == targetWeekNumber) {
+            throw new BusinessLogicException("Target week must be different from source week when duplicating within the same class and session");
+        }
+
+        List<ClassSchedule> existingTarget = repository.findByClassNameAndAcademicSessionAndWeekNumber(
+                request.getTargetClassName(), request.getTargetSession(), targetWeekNumber);
+        if (!existingTarget.isEmpty()) {
+            repository.deleteAll(existingTarget);
+        }
+
         List<ClassSchedule> duplicatedSchedules = sourceSchedules.stream().map(source -> {
             ClassSchedule target = new ClassSchedule();
             target.setClassName(request.getTargetClassName());
@@ -90,7 +109,7 @@ public class ClassScheduleService {
             target.setTeacherName(null);
             return target;
         }).collect(Collectors.toList());
-        
+
         repository.saveAll(duplicatedSchedules);
     }
 

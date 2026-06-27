@@ -30,7 +30,7 @@ interface SchedulePeriod {
   endTime: string;
 }
 
-const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
 const WEEKS = Array.from({ length: 52 }, (_, index) => index + 1);
 
 function defaultSlot(dayOfWeek = 'MONDAY'): Partial<ScheduleSlot> {
@@ -303,14 +303,18 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
     }
   }
 
-  function openSlotForm(dayOfWeek: string, slot?: ScheduleSlot) {
+  function openSlotForm(dayOfWeek: string, slot?: ScheduleSlot, defaultPeriodName?: string) {
     if (!isAdmin) return;
     if (!slot && periods.length === 0) {
       setError('Configure periods for this class before adding timetable slots');
       return;
     }
     setEditingSlot(slot || null);
-    setFormData(slot ? { ...slot } : { ...defaultSlot(dayOfWeek), weekNumber: selectedWeek, periodName: periods[0]?.periodName || '' });
+    setFormData(
+      slot
+        ? { ...slot }
+        : { ...defaultSlot(dayOfWeek), weekNumber: selectedWeek, periodName: defaultPeriodName || periods[0]?.periodName || '' }
+    );
     setShowForm(true);
   }
 
@@ -319,41 +323,56 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
       return <div className="schedule-empty">Configure an academic year and class before viewing timetable slots.</div>;
     }
 
-    return (
-      <div className="schedule-grid">
-        {DAYS.map(day => {
-          const daySlots = schedules
-            .filter(slot => slot.dayOfWeek === day)
-            .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    if (periods.length === 0) {
+      return <div className="schedule-empty">Configure periods for this class before viewing the weekly planner.</div>;
+    }
 
-          return (
-            <div key={day} className="day-row">
-              <div className="day-label">{day}</div>
-              <div className="slots-container">
-                {daySlots.length === 0 && <span className="empty-day">No slots</span>}
-                {daySlots.map(slot => (
-                  <div key={slot.id} className={`slot-card type-${slot.scheduleType.toLowerCase()}`}>
-                    <div className="slot-time">{slot.startTime} - {slot.endTime}</div>
-                    <div className="slot-period">{slot.periodName}</div>
-                    <div className="slot-subject">{slot.subject || slot.scheduleType}</div>
-                    {slot.content ? <div className="slot-content">{slot.content}</div> : null}
-                    {isAdmin && (
-                      <div className="slot-actions">
-                        <button type="button" onClick={() => openSlotForm(day, slot)}>Edit</button>
-                        <button type="button" onClick={() => slot.id && handleDelete(slot.id)}>Delete</button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {isAdmin && (
-                  <button type="button" className="add-slot-btn" onClick={() => openSlotForm(day)}>
-                    Add Slot
-                  </button>
-                )}
-              </div>
+    const slotMap = schedules.reduce<Record<string, ScheduleSlot>>((map, slot) => {
+      map[`${slot.dayOfWeek}-${slot.periodName}`] = slot;
+      return map;
+    }, {});
+
+    return (
+      <div className="schedule-grid spreadsheet">
+        <div className="grid-row grid-header-row">
+          <div className="grid-cell grid-cell-day">Day</div>
+          {periods.map(period => (
+            <div key={period.periodName} className="grid-cell grid-cell-period">
+              {period.periodName}
             </div>
-          );
-        })}
+          ))}
+          <div className="grid-cell grid-cell-action">Action</div>
+        </div>
+
+        {DAYS.map(day => (
+          <div key={day} className="grid-row">
+            <div className="grid-cell grid-cell-day">{day}</div>
+            {periods.map(period => {
+              const slot = slotMap[`${day}-${period.periodName}`];
+              return (
+                <div
+                  key={`${day}-${period.periodName}`}
+                  className={`grid-cell grid-cell-slot ${slot ? `type-${slot.scheduleType.toLowerCase()}` : 'empty-slot'}`}
+                  onClick={() => openSlotForm(day, slot, period.periodName)}
+                >
+                  {slot ? (
+                    <>
+                      <div className="slot-period">{slot.periodName}</div>
+                      <div className="slot-subject">{slot.subject || slot.scheduleType}</div>
+                    </>
+                  ) : (
+                    <span className="slot-placeholder">+</span>
+                  )}
+                </div>
+              );
+            })}
+            <div className="grid-cell grid-cell-action">
+              <button type="button" className="add-slot-btn" onClick={() => openSlotForm(day)}>
+                + Add
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -567,17 +586,28 @@ export function ClassScheduleModule({ schoolId }: ClassScheduleModuleProps) {
         .period-chip span { color: var(--muted); }
         .period-chip button { border: 1px solid rgba(248, 113, 113, 0.5); background: rgba(248, 113, 113, 0.12); color: #fecaca; border-radius: 6px; padding: 4px 7px; cursor: pointer; }
         .schedule-grid { border: 1px solid rgba(148, 163, 184, 0.28); border-radius: 8px; overflow: hidden; background: rgba(15, 23, 42, 0.18); }
-        .day-row { display: grid; grid-template-columns: 126px 1fr; border-bottom: 1px solid rgba(148, 163, 184, 0.2); min-height: 104px; }
-        .day-row:last-child { border-bottom: 0; }
-        .day-label { padding: 15px; font-weight: 700; color: var(--text); background: rgba(15, 23, 42, 0.36); border-right: 1px solid rgba(148, 163, 184, 0.2); }
-        .slots-container { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; padding: 12px; min-width: 0; }
+        .schedule-grid.spreadsheet { display: grid; gap: 0; }
+        .grid-row { display: grid; grid-template-columns: minmax(140px, 1fr) repeat(4, minmax(120px, 1fr)) 100px; border-bottom: 1px solid rgba(148, 163, 184, 0.2); }
+        .grid-row:last-child { border-bottom: 0; }
+        .grid-header-row { background: rgba(248, 250, 252, 0.92); color: #0f172a; font-weight: 700; }
+        .grid-cell { padding: 14px 12px; border-right: 1px solid rgba(148, 163, 184, 0.16); display: flex; align-items: center; justify-content: center; min-height: 74px; }
+        .grid-cell:last-child { border-right: 0; }
+        .grid-cell-day { justify-content: flex-start; font-weight: 700; color: var(--text); }
+        .grid-cell-period { justify-content: center; }
+        .grid-cell-action { justify-content: center; }
+        .grid-cell-slot { cursor: pointer; flex-direction: column; text-align: center; gap: 6px; padding: 12px; min-height: 94px; }
+        .grid-cell-slot.empty-slot { background: rgba(255, 255, 255, 0.08); }
+        .grid-cell-slot.type-core { background: rgba(59, 130, 246, 0.12); }
+        .grid-cell-slot.type-activity { background: rgba(34, 197, 94, 0.12); }
+        .grid-cell-slot.type-holiday { background: rgba(251, 146, 60, 0.12); }
+        .slot-placeholder { color: rgba(15, 23, 42, 0.5); font-size: 1.2rem; font-weight: 700; }
+        .slot-period { font-size: 0.88rem; color: var(--text); font-weight: 700; }
+        .slot-subject { font-size: 0.84rem; color: #334155; }
         .slot-card { width: 210px; min-height: 96px; padding: 10px; border-radius: 8px; color: #102033; background: #f8fafc; border-left: 4px solid #64748b; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18); }
         .type-core { border-left-color: #2563eb; background: #eff6ff; }
         .type-activity { border-left-color: #16a34a; background: #ecfdf5; }
         .type-holiday { border-left-color: #ea580c; background: #fff7ed; }
         .slot-time { font-weight: 800; margin-bottom: 5px; }
-        .slot-period { display: inline-flex; margin-bottom: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(15, 23, 42, 0.1); color: #0f172a; font-size: 0.78rem; font-weight: 800; }
-        .slot-subject { font-weight: 700; color: #111827; }
         .slot-content, .slot-meta { margin-top: 5px; color: #475569; font-size: 0.86rem; }
         .slot-actions { margin-top: 10px; display: flex; gap: 6px; }
         .slot-actions button { border: 1px solid #cbd5e1; background: #ffffff; color: #0f172a; border-radius: 6px; padding: 5px 8px; cursor: pointer; }
