@@ -2,7 +2,7 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 COPY mgpsfren-frontend/package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY mgpsfren-frontend .
 ARG VITE_API_BASE_URL=http://localhost:8080/api
