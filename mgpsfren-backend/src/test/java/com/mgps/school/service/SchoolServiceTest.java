@@ -317,6 +317,40 @@ class SchoolServiceTest {
     }
     
     @Test
+    @DisplayName("Should update the subscription plan when provided")
+    void testUpdateSchoolSubscriptionPlan() {
+        // Arrange
+        UUID newPlanId = UUID.randomUUID();
+        SubscriptionPlan newPlan = SubscriptionPlan.builder()
+            .id(newPlanId)
+            .planName("FREE")
+            .maxStudents(100)
+            .maxStaff(10)
+            .maxUsers(100)
+            .monthlyPrice(new BigDecimal("0.00"))
+            .isActive(true)
+            .build();
+
+        SchoolUpdateDTO updateDTO = new SchoolUpdateDTO();
+        updateDTO.setSubscriptionPlanId(newPlanId);
+
+        when(schoolRepository.findById(schoolId)).thenReturn(Optional.of(school));
+        when(subscriptionPlanRepository.findById(newPlanId)).thenReturn(Optional.of(newPlan));
+        when(schoolRepository.save(any(School.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(schoolRepository.findByIdWithSubscriptionPlan(schoolId)).thenReturn(Optional.of(school));
+
+        // Act
+        SchoolDTO result = schoolService.updateSchool(schoolId, updateDTO);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getSubscriptionPlan()).isNotNull();
+        assertThat(result.getSubscriptionPlan().getPlanName()).isEqualTo("FREE");
+
+        verify(subscriptionPlanRepository).findById(newPlanId);
+    }
+
+    @Test
     @DisplayName("Should change school status")
     void testChangeSchoolStatus() {
         // Arrange

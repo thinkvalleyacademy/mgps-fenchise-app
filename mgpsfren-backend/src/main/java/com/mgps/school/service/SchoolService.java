@@ -230,6 +230,11 @@ public class SchoolService {
         if (dto.getState() != null) school.setState(dto.getState());
         if (dto.getPostalCode() != null) school.setPostalCode(dto.getPostalCode());
         if (dto.getLogoUrl() != null) school.setLogoUrl(dto.getLogoUrl());
+        if (dto.getSubscriptionPlanId() != null) {
+            SubscriptionPlan plan = subscriptionPlanRepository.findById(dto.getSubscriptionPlanId())
+                .orElseThrow(() -> new ResourceNotFoundException("Subscription plan not found"));
+            school.setSubscriptionPlan(plan);
+        }
         
         School updated = schoolRepository.save(school);
         School snapshotSchool = schoolRepository.findByIdWithSubscriptionPlan(schoolId).orElse(updated);

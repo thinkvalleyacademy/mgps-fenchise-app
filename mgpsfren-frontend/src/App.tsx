@@ -4,12 +4,13 @@ import LoginModule from './components/LoginModule';
 import FeeManagementModule from './components/FeeManagementModule';
 import EnquiryModule from './components/EnquiryModule';
 import { ClassScheduleModule } from './components/ClassScheduleModule';
-import { buildSchoolPreview, checkSuperAdminStatus, createSchool, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, deleteSchool, registerUser, fetchUsers, updateUser, deleteUser, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures, fetchEnquiries, fetchSchedules, createSchedule, updateSchedule, deleteSchedule, duplicateSchedule } from './api';
+import { buildSchoolPreview, checkSuperAdminStatus, createSchool, createSubscriptionPlan, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, deleteSchool, registerUser, fetchUsers, updateUser, deleteUser, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures, fetchEnquiries, fetchSchedules, createSchedule, updateSchedule, deleteSchedule, duplicateSchedule } from './api';
 import type {
   AuthProfile,
   SchoolRegistrationPayload,
   SchoolSummary,
   SubscriptionPlan,
+  SubscriptionPlanDraft,
   TenantSchoolOverview,
   SuperAdminSetupPayload,
   SuperAdminStatus
@@ -180,6 +181,16 @@ export default function App() {
 
   const [schools, setSchools] = useState<SchoolSummary[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>(defaultPlans);
+  const [showPlanForm, setShowPlanForm] = useState(false);
+  const [planForm, setPlanForm] = useState<SubscriptionPlanDraft>({
+    planName: '',
+    description: '',
+    maxStudents: 500,
+    maxStaff: 50,
+    maxUsers: 100,
+    monthlyPrice: '4999',
+    isActive: true
+  });
   const [isLoadingSchools, setIsLoadingSchools] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -716,10 +727,45 @@ export default function App() {
                 <h2>Plan assignment and billing</h2>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="primary small">Create Plan</button>
+                <button type="button" className="primary small" onClick={() => setShowPlanForm((current) => !current)}>{showPlanForm ? 'Hide form' : 'Create Plan'}</button>
                 <span className="badge">Subscriptions</span>
               </div>
             </div>
+
+            {showPlanForm && (
+              <form onSubmit={handleCreatePlan} style={{ display: 'grid', gap: 12, marginBottom: 20, padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.04)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                  <label style={{ display: 'grid', gap: 6 }}>
+                    <span>Plan name</span>
+                    <input value={planForm.planName} onChange={(e) => setPlanForm((cur) => ({ ...cur, planName: e.target.value }))} placeholder="FREE / BASIC" required />
+                  </label>
+                  <label style={{ display: 'grid', gap: 6 }}>
+                    <span>Monthly price</span>
+                    <input type="number" value={planForm.monthlyPrice ?? ''} onChange={(e) => setPlanForm((cur) => ({ ...cur, monthlyPrice: e.target.value }))} placeholder="4999" required />
+                  </label>
+                  <label style={{ display: 'grid', gap: 6 }}>
+                    <span>Max students</span>
+                    <input type="number" value={planForm.maxStudents ?? ''} onChange={(e) => setPlanForm((cur) => ({ ...cur, maxStudents: Number(e.target.value) }))} />
+                  </label>
+                  <label style={{ display: 'grid', gap: 6 }}>
+                    <span>Max staff</span>
+                    <input type="number" value={planForm.maxStaff ?? ''} onChange={(e) => setPlanForm((cur) => ({ ...cur, maxStaff: Number(e.target.value) }))} />
+                  </label>
+                  <label style={{ display: 'grid', gap: 6 }}>
+                    <span>Max users</span>
+                    <input type="number" value={planForm.maxUsers ?? ''} onChange={(e) => setPlanForm((cur) => ({ ...cur, maxUsers: Number(e.target.value) }))} />
+                  </label>
+                </div>
+                <label style={{ display: 'grid', gap: 6 }}>
+                  <span>Description</span>
+                  <textarea value={planForm.description ?? ''} onChange={(e) => setPlanForm((cur) => ({ ...cur, description: e.target.value }))} rows={3} placeholder="Describe the plan" />
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="submit" className="primary small" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save plan'}</button>
+                  <button type="button" className="secondary small" onClick={() => setShowPlanForm(false)}>Cancel</button>
+                </div>
+              </form>
+            )}
 
             <div className="module-card-grid">
               {plans.map((plan) => (
@@ -929,6 +975,36 @@ export default function App() {
       setSchools(refreshed);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to delete school');
+    }
+  }
+
+  async function handleCreatePlan(event: React.FormEvent) {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const createdPlan = await createSubscriptionPlan(planForm);
+      const normalizedPlan = {
+        ...createdPlan,
+        planId: (createdPlan as any).planId ?? (createdPlan as any).id ?? ''
+      } as SubscriptionPlan;
+      setPlans((current) => [normalizedPlan, ...current]);
+      setShowPlanForm(false);
+      setPlanForm({
+        planName: '',
+        description: '',
+        maxStudents: 500,
+        maxStaff: 50,
+        maxUsers: 100,
+        monthlyPrice: '4999',
+        isActive: true
+      });
+      const refreshed = await fetchSubscriptionPlans();
+      setPlans(refreshed.map((plan) => ({ ...plan, planId: (plan as any).id || plan.planId })));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to create plan');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 

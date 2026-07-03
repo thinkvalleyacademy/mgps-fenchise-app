@@ -11,6 +11,16 @@ export interface SubscriptionPlan {
   isActive?: boolean;
 }
 
+export interface SubscriptionPlanDraft {
+  planName: string;
+  description?: string;
+  maxStudents?: number;
+  maxStaff?: number;
+  maxUsers?: number;
+  monthlyPrice?: string;
+  isActive?: boolean;
+}
+
 export interface SchoolSummary {
   schoolId: string;
   name: string;

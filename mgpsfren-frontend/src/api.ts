@@ -2,6 +2,7 @@ import type {
   SchoolRegistrationPayload,
   SchoolSummary,
   SubscriptionPlan,
+  SubscriptionPlanDraft,
   SuperAdminSetupPayload,
   SuperAdminStatus,
   AuthResponse,
@@ -67,6 +68,13 @@ export async function fetchSchools(): Promise<SchoolSummary[]> {
 
 export async function fetchSubscriptionPlans(): Promise<SubscriptionPlan[]> {
   return request('/subscription-plans');
+}
+
+export async function createSubscriptionPlan(payload: SubscriptionPlanDraft): Promise<SubscriptionPlan> {
+  return request('/subscription-plans', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function createSchool(payload: SchoolRegistrationPayload): Promise<unknown> {

@@ -12,12 +12,13 @@ public class SchoolUpdateDTO {
     private String state;
     private String postalCode;
     private String logoUrl;
+    private java.util.UUID subscriptionPlanId;
 
     public SchoolUpdateDTO() {
     }
 
     public SchoolUpdateDTO(String name, String adminPhone, String address, String city, String state,
-                           String postalCode, String logoUrl) {
+                           String postalCode, String logoUrl, java.util.UUID subscriptionPlanId) {
         this.name = name;
         this.adminPhone = adminPhone;
         this.address = address;
@@ -25,6 +26,7 @@ public class SchoolUpdateDTO {
         this.state = state;
         this.postalCode = postalCode;
         this.logoUrl = logoUrl;
+        this.subscriptionPlanId = subscriptionPlanId;
     }
 
     public String getName() { return name; }
@@ -41,6 +43,8 @@ public class SchoolUpdateDTO {
     public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
     public String getLogoUrl() { return logoUrl; }
     public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
+    public java.util.UUID getSubscriptionPlanId() { return subscriptionPlanId; }
+    public void setSubscriptionPlanId(java.util.UUID subscriptionPlanId) { this.subscriptionPlanId = subscriptionPlanId; }
 
     public static Builder builder() { return new Builder(); }
 
@@ -52,6 +56,7 @@ public class SchoolUpdateDTO {
         private String state;
         private String postalCode;
         private String logoUrl;
+        private java.util.UUID subscriptionPlanId;
 
         private Builder() {
         }
@@ -63,9 +68,10 @@ public class SchoolUpdateDTO {
         public Builder state(String state) { this.state = state; return this; }
         public Builder postalCode(String postalCode) { this.postalCode = postalCode; return this; }
         public Builder logoUrl(String logoUrl) { this.logoUrl = logoUrl; return this; }
+        public Builder subscriptionPlanId(java.util.UUID subscriptionPlanId) { this.subscriptionPlanId = subscriptionPlanId; return this; }
 
         public SchoolUpdateDTO build() {
-            return new SchoolUpdateDTO(name, adminPhone, address, city, state, postalCode, logoUrl);
+            return new SchoolUpdateDTO(name, adminPhone, address, city, state, postalCode, logoUrl, subscriptionPlanId);
         }
     }
 }
