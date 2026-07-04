@@ -4,6 +4,7 @@ import com.mgps.common.exception.DuplicateResourceException;
 import com.mgps.common.exception.ResourceNotFoundException;
 import com.mgps.audit.ActivityLogService;
 import com.mgps.school.entity.School;
+import com.mgps.tenant.RoutingDataSource;
 import com.mgps.user.dto.UserDtos.AuthResponse;
 import com.mgps.user.dto.UserDtos.BulkImportResult;
 import com.mgps.user.dto.UserDtos.LoginRequest;
@@ -21,6 +22,9 @@ import com.mgps.user.entity.AppUser;
 import com.mgps.user.entity.UserRole;
 import com.mgps.user.entity.UserStatus;
 import com.mgps.user.repository.AppUserRepository;
+import lombok.extern.log4j.Log4j2;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,6 +45,8 @@ import java.util.UUID;
 
 @Service
 public class UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
@@ -75,6 +81,7 @@ public class UserService {
 
     public AuthResponse registerUser(RegisterUserRequest request) {
         AppUser saved;
+        log.info("registerUser getSchoolId: {}", request.getSchoolId());
         if (request.getSchoolId() == null) {
             saved = createUser(request);
         } else {
