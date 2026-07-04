@@ -4,7 +4,6 @@ import com.mgps.common.exception.DuplicateResourceException;
 import com.mgps.common.exception.ResourceNotFoundException;
 import com.mgps.audit.ActivityLogService;
 import com.mgps.school.entity.School;
-import com.mgps.tenant.RoutingDataSource;
 import com.mgps.tenant.TenantContext;
 import com.mgps.user.dto.UserDtos.AuthResponse;
 import com.mgps.user.dto.UserDtos.BulkImportResult;
@@ -23,7 +22,8 @@ import com.mgps.user.entity.AppUser;
 import com.mgps.user.entity.UserRole;
 import com.mgps.user.entity.UserStatus;
 import com.mgps.user.repository.AppUserRepository;
-import lombok.extern.log4j.Log4j2;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +56,9 @@ public class UserService {
     private final SchoolRepository schoolRepository;
     private final TenantExecutionService tenantExecutionService;
     private final ActivityLogService activityLogService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public UserService() {
         this(null, null, null, null, null, null, null);
@@ -136,6 +139,7 @@ public class UserService {
                 log.info("createUserInTenant master-saved | userId={} email={} schoolId={}", saved.getId(), saved.getEmail(), saved.getSchoolId());
                 return saved;
             });
+            detachIfManaged(savedMaster);
 
             savedTenant = tenantExecutionService.inTenant(school, () -> {
                 AppUser tenantUser = buildUser(request, userId, email, passwordHash);
@@ -164,6 +168,13 @@ public class UserService {
                 }
             }
             throw ex;
+        }
+    }
+
+    private void detachIfManaged(AppUser user) {
+        if (entityManager != null && user != null && entityManager.contains(user)) {
+            entityManager.detach(user);
+            log.debug("Detached master user before tenant save | userId={}", user.getId());
         }
     }
 
