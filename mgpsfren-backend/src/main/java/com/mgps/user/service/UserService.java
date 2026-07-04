@@ -96,20 +96,27 @@ public class UserService {
             .orElseThrow(() -> new ResourceNotFoundException("School not found"));
 
         String email = normalizeEmail(request.getEmail());
-        boolean existsInMaster = tenantExecutionService.inMaster(() -> appUserRepository.existsByEmail(email));
-        boolean existsInTenant = tenantExecutionService.inTenant(school, () -> appUserRepository.existsByEmail(email));
-        if (existsInMaster || existsInTenant) {
-            throw new DuplicateResourceException("User already exists with email: " + email);
-        }
-
         UUID userId = UUID.randomUUID();
         String passwordHash = passwordEncoder.encode(request.getPassword());
-        AppUser masterUser = buildUser(request, userId, email, passwordHash);
-        AppUser tenantUser = buildUser(request, userId, email, passwordHash);
 
-        AppUser savedMaster = tenantExecutionService.inMaster(() -> appUserRepository.save(masterUser));
+        log.info("Creating tenant-scoped user for school {} in database {}", school.getId(), school.getDatabaseName());
+
+        AppUser savedMaster = tenantExecutionService.inMaster(() -> {
+            if (appUserRepository.existsByEmail(email)) {
+                throw new DuplicateResourceException("User already exists with email: " + email);
+            }
+            AppUser masterUser = buildUser(request, userId, email, passwordHash);
+            return appUserRepository.save(masterUser);
+        });
+
         try {
-            AppUser savedTenant = tenantExecutionService.inTenant(school, () -> appUserRepository.save(tenantUser));
+            AppUser savedTenant = tenantExecutionService.inTenant(school, () -> {
+                if (appUserRepository.existsByEmail(email)) {
+                    throw new DuplicateResourceException("User already exists with email: " + email);
+                }
+                AppUser tenantUser = buildUser(request, userId, email, passwordHash);
+                return appUserRepository.save(tenantUser);
+            });
             recordUserCreated(school, savedMaster, savedTenant);
             return savedTenant;
         } catch (RuntimeException ex) {
