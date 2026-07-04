@@ -146,7 +146,7 @@ class UserServiceTest {
         request.setRole(UserRole.SCHOOL_ADMIN);
 
         when(schoolRepository.findByIdWithSubscriptionPlan(schoolId)).thenReturn(Optional.of(school));
-        when(appUserRepository.existsByEmail("admin@tenant.test")).thenReturn(false);
+        when(appUserRepository.findByEmail("admin@tenant.test")).thenReturn(Optional.empty());
         when(appUserRepository.save(any(AppUser.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
 

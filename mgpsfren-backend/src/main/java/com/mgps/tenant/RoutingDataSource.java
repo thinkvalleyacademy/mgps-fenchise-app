@@ -173,20 +173,20 @@ public class RoutingDataSource extends AbstractDataSource {
         String tenantId = TenantContext.getTenant();
         
         if (tenantId == null || tenantId.isBlank()) {
-            log.debug("No tenant context set, using master datasource");
+            log.info("RoutingDataSource choose datasource | tenantContext=MASTER using=MASTER");
             return masterDataSource;
         }
 
         // Fixed tenant for superadmin ALWAYS uses master
         if (TenantNamingUtil.CLIENT_TENANT_ID.equalsIgnoreCase(tenantId)) {
-            log.debug("Using master datasource for fixed superadmin tenant: {}", tenantId);
+            log.info("RoutingDataSource choose datasource | tenantContext={} using=MASTER reason=superadmin", tenantId);
             return masterDataSource;
         }
         
         // Try to get tenant-specific datasource
         DataSource tenantDataSource = tenantDataSources.get(tenantId);
         if (tenantDataSource != null) {
-            log.debug("Using cached tenant datasource for: {}", tenantId);
+            log.info("RoutingDataSource choose datasource | tenantContext={} using=CACHED_TENANT datasourceClass={}", tenantId, tenantDataSource.getClass().getName());
             return tenantDataSource;
         }
         
@@ -194,12 +194,13 @@ public class RoutingDataSource extends AbstractDataSource {
         if (dataSourceRegistry != null) {
             DataSource loadedDs = tryLoadingTenantDataSource(tenantId);
             if (loadedDs != null) {
+                log.info("RoutingDataSource choose datasource | tenantContext={} using=LOADED_TENANT datasourceClass={}", tenantId, loadedDs.getClass().getName());
                 return loadedDs;
             }
         }
 
         // If tenant datasource not found, log warning and use master
-        log.warn("Tenant datasource not found for tenant: {}, using master as fallback", tenantId);
+        log.warn("RoutingDataSource choose datasource | tenantContext={} using=MASTER reason=tenant-datasource-not-found", tenantId);
         return masterDataSource;
     }
 

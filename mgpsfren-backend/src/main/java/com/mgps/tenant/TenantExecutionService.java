@@ -2,12 +2,16 @@ package com.mgps.tenant;
 
 import com.mgps.school.entity.School;
 import com.mgps.school.service.DatabaseProvisioningService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.function.Supplier;
 
 @Service
 public class TenantExecutionService {
+
+    private static final Logger log = LoggerFactory.getLogger(TenantExecutionService.class);
 
     private final RoutingDataSource routingDataSource;
     private final DatabaseProvisioningService databaseProvisioningService;
@@ -53,14 +57,19 @@ public class TenantExecutionService {
         try {
             TenantContext.clear();
             if (tenantId != null && !tenantId.isBlank()) {
+                log.info("TenantExecutionService switching context | targetTenant={} previousTenant={} action=tenant", tenantId, previousTenant);
                 TenantContext.setTenant(tenantId);
+            } else {
+                log.info("TenantExecutionService switching context | targetTenant=MASTER previousTenant={} action=master", previousTenant);
             }
+            log.info("TenantExecutionService current context | tenant={}", TenantContext.getTenant());
             return action.get();
         } finally {
             TenantContext.clear();
             if (previousTenant != null && !previousTenant.isBlank()) {
                 TenantContext.setTenant(previousTenant);
             }
+            log.info("TenantExecutionService restored context | tenant={}", TenantContext.getTenant());
         }
     }
 }

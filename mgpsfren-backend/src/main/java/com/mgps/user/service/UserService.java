@@ -5,6 +5,7 @@ import com.mgps.common.exception.ResourceNotFoundException;
 import com.mgps.audit.ActivityLogService;
 import com.mgps.school.entity.School;
 import com.mgps.tenant.RoutingDataSource;
+import com.mgps.tenant.TenantContext;
 import com.mgps.user.dto.UserDtos.AuthResponse;
 import com.mgps.user.dto.UserDtos.BulkImportResult;
 import com.mgps.user.dto.UserDtos.LoginRequest;
@@ -81,7 +82,9 @@ public class UserService {
 
     public AuthResponse registerUser(RegisterUserRequest request) {
         AppUser saved;
-        log.info("registerUser getSchoolId: {}", request.getSchoolId());
+        log.info("registerUser request | schoolId={} email={} role={} passwordLength={}",
+            request.getSchoolId(), request.getEmail(), request.getRole(),
+            request.getPassword() == null ? 0 : request.getPassword().length());
         if (request.getSchoolId() == null) {
             saved = createUser(request);
         } else {
@@ -99,23 +102,38 @@ public class UserService {
         UUID userId = UUID.randomUUID();
         String passwordHash = passwordEncoder.encode(request.getPassword());
 
-        log.info("Creating tenant-scoped user for school {} in database {}", school.getId(), school.getDatabaseName());
+        log.info("createUserInTenant start | schoolId={} schoolName={} database={} email={} currentTenant={}",
+            school.getId(), school.getName(), school.getDatabaseName(), email, TenantContext.getTenant());
 
         AppUser savedMaster = tenantExecutionService.inMaster(() -> {
-            if (appUserRepository.existsByEmail(email)) {
+            log.info("createUserInTenant master-check | email={} currentTenant={}", email, TenantContext.getTenant());
+            var existingMaster = appUserRepository.findByEmail(email);
+            log.info("createUserInTenant master-check result | email={} found={}", email, existingMaster.isPresent());
+            if (existingMaster.isPresent()) {
+                log.warn("createUserInTenant master collision | email={} existingUserId={} schoolId={}",
+                    email, existingMaster.get().getId(), existingMaster.get().getSchoolId());
                 throw new DuplicateResourceException("User already exists with email: " + email);
             }
             AppUser masterUser = buildUser(request, userId, email, passwordHash);
-            return appUserRepository.save(masterUser);
+            AppUser saved = appUserRepository.save(masterUser);
+            log.info("createUserInTenant master-saved | userId={} email={} schoolId={}", saved.getId(), saved.getEmail(), saved.getSchoolId());
+            return saved;
         });
 
         try {
             AppUser savedTenant = tenantExecutionService.inTenant(school, () -> {
-                if (appUserRepository.existsByEmail(email)) {
+                log.info("createUserInTenant tenant-check | email={} currentTenant={}", email, TenantContext.getTenant());
+                var existingTenant = appUserRepository.findByEmail(email);
+                log.info("createUserInTenant tenant-check result | email={} found={}", email, existingTenant.isPresent());
+                if (existingTenant.isPresent()) {
+                    log.warn("createUserInTenant tenant collision | email={} existingUserId={} schoolId={}",
+                        email, existingTenant.get().getId(), existingTenant.get().getSchoolId());
                     throw new DuplicateResourceException("User already exists with email: " + email);
                 }
                 AppUser tenantUser = buildUser(request, userId, email, passwordHash);
-                return appUserRepository.save(tenantUser);
+                AppUser saved = appUserRepository.save(tenantUser);
+                log.info("createUserInTenant tenant-saved | userId={} email={} schoolId={}", saved.getId(), saved.getEmail(), saved.getSchoolId());
+                return saved;
             });
             recordUserCreated(school, savedMaster, savedTenant);
             return savedTenant;
