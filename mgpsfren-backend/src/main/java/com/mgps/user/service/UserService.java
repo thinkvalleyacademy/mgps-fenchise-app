@@ -105,23 +105,11 @@ public class UserService {
         log.info("createUserInTenant start | schoolId={} schoolName={} database={} email={} currentTenant={}",
             school.getId(), school.getName(), school.getDatabaseName(), email, TenantContext.getTenant());
 
-        AppUser savedMaster = tenantExecutionService.inMaster(() -> {
-            log.info("createUserInTenant master-check | email={} currentTenant={}", email, TenantContext.getTenant());
-            var existingMaster = appUserRepository.findByEmail(email);
-            log.info("createUserInTenant master-check result | email={} found={}", email, existingMaster.isPresent());
-            if (existingMaster.isPresent()) {
-                log.warn("createUserInTenant master collision | email={} existingUserId={} schoolId={}",
-                    email, existingMaster.get().getId(), existingMaster.get().getSchoolId());
-                throw new DuplicateResourceException("User already exists with email: " + email);
-            }
-            AppUser masterUser = buildUser(request, userId, email, passwordHash);
-            AppUser saved = appUserRepository.save(masterUser);
-            log.info("createUserInTenant master-saved | userId={} email={} schoolId={}", saved.getId(), saved.getEmail(), saved.getSchoolId());
-            return saved;
-        });
+        AppUser savedTenant = null;
+        AppUser savedMaster = null;
 
         try {
-            AppUser savedTenant = tenantExecutionService.inTenant(school, () -> {
+            savedTenant = tenantExecutionService.inTenant(school, () -> {
                 log.info("createUserInTenant tenant-check | email={} currentTenant={}", email, TenantContext.getTenant());
                 var existingTenant = appUserRepository.findByEmail(email);
                 log.info("createUserInTenant tenant-check result | email={} found={}", email, existingTenant.isPresent());
@@ -135,10 +123,41 @@ public class UserService {
                 log.info("createUserInTenant tenant-saved | userId={} email={} schoolId={}", saved.getId(), saved.getEmail(), saved.getSchoolId());
                 return saved;
             });
+
+            savedMaster = tenantExecutionService.inMaster(() -> {
+                log.info("createUserInTenant master-check | email={} currentTenant={}", email, TenantContext.getTenant());
+                var existingMaster = appUserRepository.findByEmail(email);
+                log.info("createUserInTenant master-check result | email={} found={}", email, existingMaster.isPresent());
+                if (existingMaster.isPresent()) {
+                    log.warn("createUserInTenant master collision | email={} existingUserId={} schoolId={}",
+                        email, existingMaster.get().getId(), existingMaster.get().getSchoolId());
+                    throw new DuplicateResourceException("User already exists with email: " + email);
+                }
+                AppUser masterUser = buildUser(request, userId, email, passwordHash);
+                AppUser saved = appUserRepository.save(masterUser);
+                log.info("createUserInTenant master-saved | userId={} email={} schoolId={}", saved.getId(), saved.getEmail(), saved.getSchoolId());
+                return saved;
+            });
+
             recordUserCreated(school, savedMaster, savedTenant);
             return savedTenant;
         } catch (RuntimeException ex) {
-            tenantExecutionService.inMaster(() -> appUserRepository.deleteById(savedMaster.getId()));
+            if (savedTenant != null) {
+                AppUser tenantUserToDelete = savedTenant;
+                try {
+                    tenantExecutionService.inTenant(school, () -> appUserRepository.deleteById(tenantUserToDelete.getId()));
+                } catch (Exception cleanupEx) {
+                    log.warn("Failed to rollback tenant user {} after registration failure", tenantUserToDelete.getId(), cleanupEx);
+                }
+            }
+            if (savedMaster != null) {
+                AppUser masterUserToDelete = savedMaster;
+                try {
+                    tenantExecutionService.inMaster(() -> appUserRepository.deleteById(masterUserToDelete.getId()));
+                } catch (Exception cleanupEx) {
+                    log.warn("Failed to rollback master user {} after registration failure", masterUserToDelete.getId(), cleanupEx);
+                }
+            }
             throw ex;
         }
     }
