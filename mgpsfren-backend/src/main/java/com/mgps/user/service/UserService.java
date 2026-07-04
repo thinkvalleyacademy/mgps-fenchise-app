@@ -105,37 +105,42 @@ public class UserService {
         log.info("createUserInTenant start | schoolId={} schoolName={} database={} email={} currentTenant={}",
             school.getId(), school.getName(), school.getDatabaseName(), email, TenantContext.getTenant());
 
-        AppUser savedTenant = null;
         AppUser savedMaster = null;
+        AppUser savedTenant = null;
+
+        // Duplicate checks must happen before any save to avoid partial insertions.
+        boolean masterExists = tenantExecutionService.inMaster(() -> {
+            log.info("createUserInTenant master-duplicate-check | email={} currentTenant={}", email, TenantContext.getTenant());
+            var existing = appUserRepository.findByEmail(email);
+            log.info("createUserInTenant master-duplicate-check result | email={} found={}", email, existing.isPresent());
+            return existing.isPresent();
+        });
+        if (masterExists) {
+            throw new DuplicateResourceException("User already exists with email: " + email);
+        }
+
+        boolean tenantExists = tenantExecutionService.inTenant(school, () -> {
+            log.info("createUserInTenant tenant-duplicate-check | email={} currentTenant={}", email, TenantContext.getTenant());
+            var existing = appUserRepository.findByEmail(email);
+            log.info("createUserInTenant tenant-duplicate-check result | email={} found={}", email, existing.isPresent());
+            return existing.isPresent();
+        });
+        if (tenantExists) {
+            throw new DuplicateResourceException("User already exists with email: " + email);
+        }
 
         try {
-            savedTenant = tenantExecutionService.inTenant(school, () -> {
-                log.info("createUserInTenant tenant-check | email={} currentTenant={}", email, TenantContext.getTenant());
-                var existingTenant = appUserRepository.findByEmail(email);
-                log.info("createUserInTenant tenant-check result | email={} found={}", email, existingTenant.isPresent());
-                if (existingTenant.isPresent()) {
-                    log.warn("createUserInTenant tenant collision | email={} existingUserId={} schoolId={}",
-                        email, existingTenant.get().getId(), existingTenant.get().getSchoolId());
-                    throw new DuplicateResourceException("User already exists with email: " + email);
-                }
-                AppUser tenantUser = buildUser(request, userId, email, passwordHash);
-                AppUser saved = appUserRepository.save(tenantUser);
-                log.info("createUserInTenant tenant-saved | userId={} email={} schoolId={}", saved.getId(), saved.getEmail(), saved.getSchoolId());
-                return saved;
-            });
-
             savedMaster = tenantExecutionService.inMaster(() -> {
-                log.info("createUserInTenant master-check | email={} currentTenant={}", email, TenantContext.getTenant());
-                var existingMaster = appUserRepository.findByEmail(email);
-                log.info("createUserInTenant master-check result | email={} found={}", email, existingMaster.isPresent());
-                if (existingMaster.isPresent()) {
-                    log.warn("createUserInTenant master collision | email={} existingUserId={} schoolId={}",
-                        email, existingMaster.get().getId(), existingMaster.get().getSchoolId());
-                    throw new DuplicateResourceException("User already exists with email: " + email);
-                }
                 AppUser masterUser = buildUser(request, userId, email, passwordHash);
                 AppUser saved = appUserRepository.save(masterUser);
                 log.info("createUserInTenant master-saved | userId={} email={} schoolId={}", saved.getId(), saved.getEmail(), saved.getSchoolId());
+                return saved;
+            });
+
+            savedTenant = tenantExecutionService.inTenant(school, () -> {
+                AppUser tenantUser = buildUser(request, userId, email, passwordHash);
+                AppUser saved = appUserRepository.save(tenantUser);
+                log.info("createUserInTenant tenant-saved | userId={} email={} schoolId={}", saved.getId(), saved.getEmail(), saved.getSchoolId());
                 return saved;
             });
 
