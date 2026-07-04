@@ -35,7 +35,7 @@ public class TenantExecutionService {
 
     public <T> T inTenant(School school, Supplier<T> action) {
         ensureRegistered(school);
-        return withTenant(school.getId().toString(), action);
+        return withTenant(school.getId().toString(), school.getDatabaseName(), action);
     }
 
     public void inTenant(School school, Runnable action) {
@@ -53,16 +53,23 @@ public class TenantExecutionService {
     }
 
     private <T> T withTenant(String tenantId, Supplier<T> action) {
+        return withTenant(tenantId, null, action);
+    }
+
+    private <T> T withTenant(String tenantId, String databaseName, Supplier<T> action) {
         String previousTenant = TenantContext.getTenant();
         try {
             TenantContext.clear();
             if (tenantId != null && !tenantId.isBlank()) {
-                log.info("TenantExecutionService switching context | targetTenant={} previousTenant={} action=tenant", tenantId, previousTenant);
+                log.info("TenantExecutionService switching context | targetTenant={} targetDatabase={} previousTenant={} action=tenant",
+                    tenantId, databaseName, previousTenant);
                 TenantContext.setTenant(tenantId);
             } else {
-                log.info("TenantExecutionService switching context | targetTenant=MASTER previousTenant={} action=master", previousTenant);
+                log.info("TenantExecutionService switching context | targetTenant=MASTER targetDatabase=MASTER previousTenant={} action=master",
+                    previousTenant);
             }
-            log.info("TenantExecutionService current context | tenant={}", TenantContext.getTenant());
+            log.info("TenantExecutionService current context | tenant={} targetDatabase={}", TenantContext.getTenant(),
+                databaseName != null ? databaseName : "MASTER");
             return action.get();
         } finally {
             TenantContext.clear();

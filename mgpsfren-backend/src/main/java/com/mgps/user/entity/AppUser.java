@@ -5,9 +5,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.domain.Persistable;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -17,7 +21,7 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "app_users")
-public class AppUser {
+public class AppUser implements Persistable<UUID> {
 
     @Id
     private UUID id;
@@ -59,6 +63,9 @@ public class AppUser {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @Transient
+    private boolean isNew = true;
+
     public AppUser() {
     }
 
@@ -81,6 +88,8 @@ public class AppUser {
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
+    @Override
+    public boolean isNew() { return isNew; }
     public UUID getSchoolId() { return schoolId; }
     public void setSchoolId(UUID schoolId) { this.schoolId = schoolId; }
     public String getFirstName() { return firstName; }
@@ -106,6 +115,12 @@ public class AppUser {
 
     public String getDisplayName() {
         return firstName + " " + lastName;
+    }
+
+    @PostLoad
+    @PostPersist
+    private void markNotNew() {
+        this.isNew = false;
     }
 
     public static Builder builder() {

@@ -150,6 +150,10 @@ export async function updateUser(userId: string, payload: any): Promise<AuthProf
   return request(`/users/${userId}`, { method: 'PUT', body: JSON.stringify(payload) });
 }
 
+export async function updateUserStatus(userId: string, payload: { schoolId?: string; status: string }): Promise<AuthProfile> {
+  return request(`/users/${userId}/status`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
 export async function deleteUser(userId: string, schoolId?: string): Promise<void> {
   const path = schoolId ? `/users/${userId}?schoolId=${schoolId}` : `/users/${userId}`;
   return request(path, { method: 'DELETE' });

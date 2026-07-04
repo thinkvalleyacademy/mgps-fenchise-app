@@ -4,7 +4,7 @@ import LoginModule from './components/LoginModule';
 import FeeManagementModule from './components/FeeManagementModule';
 import EnquiryModule from './components/EnquiryModule';
 import { ClassScheduleModule } from './components/ClassScheduleModule';
-import { buildSchoolPreview, checkSuperAdminStatus, createSchool, createSubscriptionPlan, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, deleteSchool, registerUser, fetchUsers, updateUser, deleteUser, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures, fetchEnquiries, fetchSchedules, createSchedule, updateSchedule, deleteSchedule, duplicateSchedule } from './api';
+import { buildSchoolPreview, checkSuperAdminStatus, createSchool, createSubscriptionPlan, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, deleteSchool, registerUser, fetchUsers, updateUser, updateUserStatus, deleteUser, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures, fetchEnquiries, fetchSchedules, createSchedule, updateSchedule, deleteSchedule, duplicateSchedule } from './api';
 import type {
   AuthProfile,
   SchoolRegistrationPayload,
@@ -258,6 +258,13 @@ export default function App() {
     }
   }, [authProfile]);
 
+  useEffect(() => {
+    if (selectedModule === 'User Management' && authProfile?.schoolId) {
+      loadSchoolUsers(authProfile.schoolId);
+      loadTenantOverview(authProfile.schoolId);
+    }
+  }, [selectedModule, authProfile?.schoolId]);
+
   function getModulesForRole(role: string) {
     const moduleMap: Record<string, string[]> = {
       SUPER_ADMIN: ['Dashboard', 'School Management', 'User Management', 'Subscription Management', 'Enquiries', 'Audit Logs', 'Reports'],
@@ -298,6 +305,144 @@ export default function App() {
     if (!selectedSchoolId) return null;
     return schools.find((s) => s.schoolId === selectedSchoolId) ?? null;
   }, [schools, selectedSchoolId]);
+
+  const activeUserManagementSchoolId = selectedSchoolId ?? authProfile?.schoolId ?? null;
+
+  function renderUserManagementPanel(options: { embedded?: boolean } = {}) {
+    const canSelectSchool = authProfile?.role === 'SUPER_ADMIN' && !options.embedded;
+
+    return (
+      <section className={options.embedded ? 'users-panel' : 'module-panel'}>
+        <div className="module-header">
+          <div>
+            <p className="section-label">User Management</p>
+            <h2>Manage user roles and access</h2>
+          </div>
+          <span className="badge">Permissions</span>
+        </div>
+
+        {canSelectSchool && (
+          <div style={{ marginBottom: 20 }}>
+            <select className="secondary" value={selectedSchoolId ?? ''} onChange={(e) => {
+              const schoolId = e.target.value || null;
+              setSelectedSchoolId(schoolId);
+              setSchoolUsers([]);
+              if (schoolId) {
+                loadSchoolUsers(schoolId);
+                loadTenantOverview(schoolId);
+              }
+            }}>
+              <option value="">Select school</option>
+              {schools.map((school) => (
+                <option key={school.schoolId} value={school.schoolId}>{school.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {!activeUserManagementSchoolId ? (
+          <div className="empty-state">
+            <strong>Select a school to manage users.</strong>
+            <p>Tenant users will appear after a school is selected.</p>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3>Users</h3>
+              {!showUserForm && (
+                <button className="primary small" onClick={() => {
+                  resetUserForm();
+                  setShowUserForm(true);
+                }}>Add User</button>
+              )}
+            </div>
+
+            {showUserForm ? (
+              <form onSubmit={handleCreateUser} className="card-form-wrap">
+                <div className="form-grid">
+                  <label>
+                    First Name
+                    <input value={userForm.firstName} onChange={e => setUserForm({ ...userForm, firstName: e.target.value })} required />
+                  </label>
+                  <label>
+                    Last Name
+                    <input value={userForm.lastName} onChange={e => setUserForm({ ...userForm, lastName: e.target.value })} required />
+                  </label>
+                  <label>
+                    Email
+                    <input type="email" value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} required />
+                  </label>
+                  <label>
+                    Password
+                    <input type="password" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} required={!editingUserId} disabled={Boolean(editingUserId)} placeholder={editingUserId ? 'Password unchanged' : ''} />
+                  </label>
+                  <label>
+                    Role
+                    <select value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value })}>
+                      <option value="SCHOOL_ADMIN">SCHOOL_ADMIN</option>
+                      <option value="PRINCIPAL">PRINCIPAL</option>
+                      <option value="STAFF">STAFF</option>
+                      <option value="TEACHER">TEACHER</option>
+                      <option value="STUDENT">STUDENT</option>
+                      <option value="PARENT">PARENT</option>
+                      <option value="ACCOUNTANT">ACCOUNTANT</option>
+                    </select>
+                  </label>
+                </div>
+                {error && <p className="error">{error}</p>}
+                <div className="actions" style={{ marginTop: 16 }}>
+                  <button type="submit" className="primary" disabled={isSubmitting}>
+                    {isSubmitting ? 'Saving...' : editingUserId ? 'Update User' : 'Create User'}
+                  </button>
+                  <button type="button" className="secondary" onClick={() => {
+                    resetUserForm();
+                    setShowUserForm(false);
+                  }}>Cancel</button>
+                </div>
+              </form>
+            ) : (
+              <div className="table-wrap">
+                <table className="module-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isUsersLoading ? (
+                      <tr><td colSpan={5}>Loading users...</td></tr>
+                    ) : schoolUsers.length === 0 ? (
+                      <tr><td colSpan={5}>No users found for this tenant.</td></tr>
+                    ) : (
+                      schoolUsers.map(user => (
+                        <tr key={user.userId}>
+                          <td>{user.firstName} {user.lastName}</td>
+                          <td>{user.email}</td>
+                          <td><span className="badge">{user.role}</span></td>
+                          <td><span className={`status-pill ${user.status.toLowerCase()}`}>{user.status}</span></td>
+                          <td>
+                            <button className="secondary small" type="button" onClick={() => handleEditUser(user)}>Edit</button>
+                            {user.status !== 'ACTIVE' && <button className="secondary small" type="button" onClick={() => handleUserStatusChange(user.userId, 'ACTIVE')}>Activate</button>}
+                            {user.status === 'ACTIVE' && <button className="secondary small" type="button" onClick={() => handleUserStatusChange(user.userId, 'INACTIVE')}>Suspend</button>}
+                            {user.status !== 'LOCKED' && <button className="secondary small" type="button" onClick={() => handleUserStatusChange(user.userId, 'LOCKED')}>Lock</button>}
+                            <button className="secondary small error-text" type="button" onClick={() => handleDeleteUser(user.userId)}>Delete</button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+    );
+  }
 
   function renderModuleContent() {
     // School Admin Specific Data Fetching (Simplified)
@@ -464,93 +609,7 @@ export default function App() {
                 )}
 
                 {detailTab === 'users' && (
-                  <div className="users-panel">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                      <h3>School Users</h3>
-                      {!showUserForm && (
-                        <button className="primary small" onClick={() => {
-                          resetUserForm();
-                          setShowUserForm(true);
-                        }}>Add Admin User</button>
-                      )}
-                    </div>
-
-                    {showUserForm ? (
-                      <form onSubmit={handleCreateUser} className="card-form-wrap">
-                        <div className="form-grid">
-                          <label>
-                            First Name
-                            <input value={userForm.firstName} onChange={e => setUserForm({ ...userForm, firstName: e.target.value })} required />
-                          </label>
-                          <label>
-                            Last Name
-                            <input value={userForm.lastName} onChange={e => setUserForm({ ...userForm, lastName: e.target.value })} required />
-                          </label>
-                          <label>
-                            Email
-                            <input type="email" value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} required />
-                          </label>
-                          <label>
-                            Password
-                            <input type="password" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} required={!editingUserId} disabled={Boolean(editingUserId)} placeholder={editingUserId ? 'Password unchanged' : ''} />
-                          </label>
-                          <label>
-                            Role
-                            <select value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value })}>
-                              <option value="SCHOOL_ADMIN">SCHOOL_ADMIN</option>
-                              <option value="STAFF">STAFF</option>
-                              <option value="TEACHER">TEACHER</option>
-                              <option value="STUDENT">STUDENT</option>
-                            </select>
-                          </label>
-                        </div>
-                        {error && <p className="error">{error}</p>}
-                        <div className="actions" style={{ marginTop: 16 }}>
-                          <button type="submit" className="primary" disabled={isSubmitting}>
-                            {isSubmitting ? 'Saving...' : editingUserId ? 'Update User' : 'Create User'}
-                          </button>
-                          <button type="button" className="secondary" onClick={() => {
-                            resetUserForm();
-                            setShowUserForm(false);
-                          }}>Cancel</button>
-                        </div>
-                      </form>
-                    ) : (
-                      <div className="table-wrap">
-                        <table className="module-table">
-                          <thead>
-                            <tr>
-                              <th>Name</th>
-                              <th>Email</th>
-                              <th>Role</th>
-                              <th>Status</th>
-                              <th>Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {isUsersLoading ? (
-                              <tr><td colSpan={5}>Loading users...</td></tr>
-                            ) : schoolUsers.length === 0 ? (
-                              <tr><td colSpan={5}>No users found for this school.</td></tr>
-                            ) : (
-                              schoolUsers.map(user => (
-                                <tr key={user.userId}>
-                                  <td>{user.firstName} {user.lastName}</td>
-                                  <td>{user.email}</td>
-                                  <td><span className="badge">{user.role}</span></td>
-                                  <td><span className={`status-pill ${user.status.toLowerCase()}`}>{user.status}</span></td>
-                                  <td>
-                                    <button className="secondary small" type="button" onClick={() => handleEditUser(user)}>Edit</button>
-                                    <button className="secondary small error-text" type="button" onClick={() => handleDeleteUser(user.userId)}>Delete</button>
-                                  </td>
-                                </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
+                  renderUserManagementPanel({ embedded: true })
                 )}
 
                 {detailTab === 'subscription' && (
@@ -694,28 +753,7 @@ export default function App() {
         );
 
       case 'User Management':
-        return (
-          <section className="module-panel">
-            <div className="module-header">
-              <div>
-                <p className="section-label">User Management</p>
-                <h2>Manage user roles and access</h2>
-              </div>
-              <span className="badge">Permissions</span>
-            </div>
-
-            <div className="module-card-grid">
-              <article className="module-card">
-                <h4>Role assignment</h4>
-                <p>Grant or revoke access for school admins, staff, teachers and students.</p>
-              </article>
-              <article className="module-card">
-                <h4>Account status</h4>
-                <p>Activate, suspend or recover accounts as needed.</p>
-              </article>
-            </div>
-          </section>
-        );
+        return renderUserManagementPanel();
 
 
       case 'Subscription Management':
@@ -1039,24 +1077,25 @@ export default function App() {
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedSchoolId) return;
+    const targetSchoolId = activeUserManagementSchoolId;
+    if (!targetSchoolId) return;
     setIsSubmitting(true);
     try {
       if (editingUserId) {
         await updateUser(editingUserId, {
-          schoolId: selectedSchoolId,
+          schoolId: targetSchoolId,
           firstName: userForm.firstName,
           lastName: userForm.lastName,
           email: userForm.email,
           role: userForm.role
         });
       } else {
-        await registerUser({ ...userForm, schoolId: selectedSchoolId });
+        await registerUser({ ...userForm, schoolId: targetSchoolId });
       }
       setShowUserForm(false);
       resetUserForm();
-      loadSchoolUsers(selectedSchoolId);
-      loadTenantOverview(selectedSchoolId);
+      loadSchoolUsers(targetSchoolId);
+      loadTenantOverview(targetSchoolId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to create user');
     } finally {
@@ -1066,13 +1105,26 @@ export default function App() {
 
   async function handleDeleteUser(userId: string) {
     if (!window.confirm('Delete this user account?')) return;
-    if (!selectedSchoolId) return;
+    const targetSchoolId = activeUserManagementSchoolId;
+    if (!targetSchoolId) return;
     try {
-      await deleteUser(userId, selectedSchoolId);
-      loadSchoolUsers(selectedSchoolId);
-      loadTenantOverview(selectedSchoolId);
+      await deleteUser(userId, targetSchoolId);
+      loadSchoolUsers(targetSchoolId);
+      loadTenantOverview(targetSchoolId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to delete user');
+    }
+  }
+
+  async function handleUserStatusChange(userId: string, status: string) {
+    const targetSchoolId = activeUserManagementSchoolId;
+    if (!targetSchoolId) return;
+    try {
+      await updateUserStatus(userId, { schoolId: targetSchoolId, status });
+      loadSchoolUsers(targetSchoolId);
+      loadTenantOverview(targetSchoolId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update user status');
     }
   }
 

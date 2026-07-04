@@ -52,7 +52,9 @@ public class RoutingDataSource extends AbstractDataSource {
     public Connection getConnection() throws SQLException {
         DataSource dataSource = determineDataSource();
         ensureTenantAuthTable(dataSource);
-        return dataSource.getConnection();
+        Connection connection = dataSource.getConnection();
+        logConnectionTarget(connection);
+        return connection;
     }
     
     /**
@@ -62,7 +64,21 @@ public class RoutingDataSource extends AbstractDataSource {
     public Connection getConnection(String username, String password) throws SQLException {
         DataSource dataSource = determineDataSource();
         ensureTenantAuthTable(dataSource);
-        return dataSource.getConnection(username, password);
+        Connection connection = dataSource.getConnection(username, password);
+        logConnectionTarget(connection);
+        return connection;
+    }
+
+    private void logConnectionTarget(Connection connection) {
+        try {
+            log.info("RoutingDataSource connected | tenantContext={} actualDatabase={} url={}",
+                TenantContext.getTenant() == null ? "MASTER" : TenantContext.getTenant(),
+                connection.getCatalog(),
+                connection.getMetaData().getURL());
+        } catch (SQLException ex) {
+            log.warn("RoutingDataSource connected but database name could not be read | tenantContext={}",
+                TenantContext.getTenant(), ex);
+        }
     }
     
     /**

@@ -322,6 +322,17 @@ public class UserService {
     }
 
     public UserProfile updateStatus(UUID userId, UserStatusRequest request) {
+        if (request.getSchoolId() == null) {
+            return updateCurrentDataSourceStatus(userId, request);
+        }
+
+        School school = tenantExecutionService.inMaster(() -> schoolRepository.findById(request.getSchoolId()))
+            .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+        tenantExecutionService.inMaster(() -> updateCurrentDataSourceStatus(userId, request));
+        return tenantExecutionService.inTenant(school, () -> updateCurrentDataSourceStatus(userId, request));
+    }
+
+    private UserProfile updateCurrentDataSourceStatus(UUID userId, UserStatusRequest request) {
         AppUser user = appUserRepository.findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         user.setStatus(request.getStatus());

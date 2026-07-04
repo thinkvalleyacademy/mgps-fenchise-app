@@ -67,8 +67,11 @@ public class UserDtos {
     }
 
     public static class UserStatusRequest {
+        private UUID schoolId;
         private UserStatus status;
 
+        public UUID getSchoolId() { return schoolId; }
+        public void setSchoolId(UUID schoolId) { this.schoolId = schoolId; }
         public UserStatus getStatus() { return status; }
         public void setStatus(UserStatus status) { this.status = status; }
     }
