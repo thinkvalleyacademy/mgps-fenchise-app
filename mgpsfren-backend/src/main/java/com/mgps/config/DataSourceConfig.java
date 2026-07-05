@@ -5,9 +5,11 @@ import com.mgps.tenant.DataSourceRegistry;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy;
 
 import javax.sql.DataSource;
 import org.slf4j.Logger;
@@ -36,7 +38,7 @@ public class DataSourceConfig {
     /**
      * Create master datasource for tenant registry and global data
      */
-    @Bean
+    @Bean(name = "masterDataSource")
     public DataSource masterDataSource() {
         log.info("Creating master datasource: {}", masterUrl);
         
@@ -61,11 +63,17 @@ public class DataSourceConfig {
      * Routes queries to master or tenant database based on TenantContext
      */
     @Bean
-    @Primary
-    public DataSource routingDataSource(DataSource masterDataSource, DataSourceRegistry dataSourceRegistry) {
+    public RoutingDataSource routingDataSource(@Qualifier("masterDataSource") DataSource masterDataSource,
+                                               DataSourceRegistry dataSourceRegistry) {
         log.info("Creating routing datasource");
         RoutingDataSource routingDataSource = new RoutingDataSource(masterDataSource);
         routingDataSource.setDataSourceRegistry(dataSourceRegistry);
         return routingDataSource;
+    }
+
+    @Bean
+    @Primary
+    public DataSource dataSource(RoutingDataSource routingDataSource) {
+        return new LazyConnectionDataSourceProxy(routingDataSource);
     }
 }

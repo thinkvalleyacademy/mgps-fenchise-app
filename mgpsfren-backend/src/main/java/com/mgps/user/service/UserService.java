@@ -22,8 +22,6 @@ import com.mgps.user.entity.AppUser;
 import com.mgps.user.entity.UserRole;
 import com.mgps.user.entity.UserStatus;
 import com.mgps.user.repository.AppUserRepository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,9 +54,6 @@ public class UserService {
     private final SchoolRepository schoolRepository;
     private final TenantExecutionService tenantExecutionService;
     private final ActivityLogService activityLogService;
-
-    @PersistenceContext
-    private EntityManager entityManager;
 
     public UserService() {
         this(null, null, null, null, null, null, null);
@@ -135,21 +130,19 @@ public class UserService {
         try {
             savedMaster = tenantExecutionService.inMaster(() -> {
                 AppUser masterUser = buildUser(request, userId, email, passwordHash);
-                log.info("createUserInTenant master-save-target | email={} database={}", email, currentDatabaseName());
                 AppUser saved = appUserRepository.save(masterUser);
-                log.info("createUserInTenant master-saved | userId={} email={} schoolId={} database={}",
-                    saved.getId(), saved.getEmail(), saved.getSchoolId(), currentDatabaseName());
+                log.info("createUserInTenant master-saved | userId={} email={} schoolId={}",
+                    saved.getId(), saved.getEmail(), saved.getSchoolId());
                 return saved;
             });
-            detachIfManaged(savedMaster);
 
             savedTenant = tenantExecutionService.inTenant(school, () -> {
                 AppUser tenantUser = buildUser(request, userId, email, passwordHash);
-                log.info("createUserInTenant tenant-save-target | email={} expectedDatabase={} actualDatabase={}",
-                    email, school.getDatabaseName(), currentDatabaseName());
+                log.info("createUserInTenant tenant-save-target | email={} expectedDatabase={}",
+                    email, school.getDatabaseName());
                 AppUser saved = appUserRepository.save(tenantUser);
-                log.info("createUserInTenant tenant-saved | userId={} email={} schoolId={} expectedDatabase={} actualDatabase={}",
-                    saved.getId(), saved.getEmail(), saved.getSchoolId(), school.getDatabaseName(), currentDatabaseName());
+                log.info("createUserInTenant tenant-saved | userId={} email={} schoolId={} expectedDatabase={}",
+                    saved.getId(), saved.getEmail(), saved.getSchoolId(), school.getDatabaseName());
                 return saved;
             });
 
@@ -173,26 +166,6 @@ public class UserService {
                 }
             }
             throw ex;
-        }
-    }
-
-    private void detachIfManaged(AppUser user) {
-        if (entityManager != null && user != null && entityManager.contains(user)) {
-            entityManager.detach(user);
-            log.debug("Detached master user before tenant save | userId={}", user.getId());
-        }
-    }
-
-    private String currentDatabaseName() {
-        if (entityManager == null) {
-            return "UNKNOWN";
-        }
-        try {
-            Object result = entityManager.createNativeQuery("select current_database()").getSingleResult();
-            return result != null ? result.toString() : "UNKNOWN";
-        } catch (RuntimeException ex) {
-            log.warn("Unable to read current database for user operation", ex);
-            return "UNKNOWN";
         }
     }
 

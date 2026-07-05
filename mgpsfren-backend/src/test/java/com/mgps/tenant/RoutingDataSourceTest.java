@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -100,5 +101,44 @@ class RoutingDataSourceTest {
         
         // Assert - Just verify we can create routing datasource
         assertThat(routingDataSource).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should fail fast when tenant datasource is missing")
+    void testMissingTenantDataSourceDoesNotFallbackToMaster() throws Exception {
+        // Arrange
+        TenantContext.setTenant("school1");
+
+        try {
+            // Act & Assert
+            assertThatThrownBy(() -> routingDataSource.getConnection())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("No datasource registered for tenant: school1");
+            verify(mockMasterDataSource, never()).getConnection();
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    @Test
+    @DisplayName("Should use registered tenant datasource")
+    void testUseRegisteredTenantDataSource() throws Exception {
+        // Arrange
+        Connection tenantConnection = mock(Connection.class);
+        when(mockTenantDataSource.getConnection()).thenReturn(tenantConnection);
+        routingDataSource.registerTenantDataSource("school1", mockTenantDataSource);
+        TenantContext.setTenant("school1");
+
+        try {
+            // Act
+            Connection connection = routingDataSource.getConnection();
+
+            // Assert
+            assertThat(connection).isSameAs(tenantConnection);
+            verify(mockTenantDataSource).getConnection();
+            verify(mockMasterDataSource, never()).getConnection();
+        } finally {
+            TenantContext.clear();
+        }
     }
 }

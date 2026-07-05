@@ -6,8 +6,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +21,7 @@ public class DataSourceRegistry {
 
     private static final Logger log = LoggerFactory.getLogger(DataSourceRegistry.class);
     
-    private final Map<String, DataSource> dataSourceCache = new HashMap<>();
+    private final Map<String, DataSource> dataSourceCache = new ConcurrentHashMap<>();
     private final Object cacheLock = new Object();
 
     @Value("${DB_HOST:postgres}")
@@ -99,6 +99,7 @@ public class DataSourceRegistry {
         config.setIdleTimeout(600000);
         config.setMaxLifetime(1800000);
         config.setAutoCommit(true);
+        config.setInitializationFailTimeout(-1);
         config.setPoolName("HikariPool-" + tenantId);
         
         return new HikariDataSource(config);

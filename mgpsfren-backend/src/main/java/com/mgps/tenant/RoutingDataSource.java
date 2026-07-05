@@ -1,14 +1,13 @@
 package com.mgps.tenant;
 
-import org.springframework.jdbc.datasource.AbstractDataSource;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,7 +26,7 @@ import org.slf4j.LoggerFactory;
  * - Dynamically loads tenant datasource from master if not already registered
  */
 
-public class RoutingDataSource extends AbstractDataSource {
+public class RoutingDataSource extends AbstractRoutingDataSource {
 
     private static final Logger log = LoggerFactory.getLogger(RoutingDataSource.class);
     
@@ -39,6 +38,11 @@ public class RoutingDataSource extends AbstractDataSource {
     public RoutingDataSource(DataSource masterDataSource) {
         this.masterDataSource = masterDataSource;
         this.masterJdbcTemplate = new JdbcTemplate(masterDataSource);
+        Map<Object, Object> targets = new HashMap<>();
+        targets.put("MASTER", masterDataSource);
+        setDefaultTargetDataSource(masterDataSource);
+        setTargetDataSources(targets);
+        afterPropertiesSet();
     }
     
     public void setDataSourceRegistry(DataSourceRegistry dataSourceRegistry) {
@@ -51,7 +55,6 @@ public class RoutingDataSource extends AbstractDataSource {
     @Override
     public Connection getConnection() throws SQLException {
         DataSource dataSource = determineDataSource();
-        ensureTenantAuthTable(dataSource);
         Connection connection = dataSource.getConnection();
         logConnectionTarget(connection);
         return connection;
@@ -63,7 +66,6 @@ public class RoutingDataSource extends AbstractDataSource {
     @Override
     public Connection getConnection(String username, String password) throws SQLException {
         DataSource dataSource = determineDataSource();
-        ensureTenantAuthTable(dataSource);
         Connection connection = dataSource.getConnection(username, password);
         logConnectionTarget(connection);
         return connection;
@@ -71,118 +73,25 @@ public class RoutingDataSource extends AbstractDataSource {
 
     private void logConnectionTarget(Connection connection) {
         try {
+            if (connection.getMetaData() == null) {
+                log.info("RoutingDataSource connected | tenantContext={} actualDatabase=UNKNOWN url=UNKNOWN",
+                    TenantContext.getTenant() == null ? "MASTER" : TenantContext.getTenant());
+                return;
+            }
             log.info("RoutingDataSource connected | tenantContext={} actualDatabase={} url={}",
                 TenantContext.getTenant() == null ? "MASTER" : TenantContext.getTenant(),
                 connection.getCatalog(),
                 connection.getMetaData().getURL());
-        } catch (SQLException ex) {
+        } catch (Exception ex) {
             log.warn("RoutingDataSource connected but database name could not be read | tenantContext={}",
                 TenantContext.getTenant(), ex);
         }
     }
     
-    /**
-     * Determine which datasource to use based on tenant context
-     */
-    private void ensureTenantAuthTable(DataSource dataSource) {
-        if (dataSource == null || dataSource == masterDataSource) {
-            return;
-        }
-
-        try (Connection connection = dataSource.getConnection()) {
-            DatabaseMetaData metaData = connection.getMetaData();
-            
-            // 1. Ensure app_users table
-            boolean userTableExists = false;
-            try (ResultSet resultSet = metaData.getTables(null, "public", "app_users", new String[]{"TABLE"})) {
-                userTableExists = resultSet.next();
-            }
-
-            if (!userTableExists) {
-                String sql = """
-                    CREATE TABLE IF NOT EXISTS app_users (
-                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                        school_id UUID,
-                        first_name VARCHAR(100) NOT NULL,
-                        last_name VARCHAR(100) NOT NULL,
-                        email VARCHAR(255) UNIQUE NOT NULL,
-                        phone VARCHAR(20),
-                        password_hash VARCHAR(255) NOT NULL,
-                        role VARCHAR(50) NOT NULL,
-                        status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
-                        last_login_at TIMESTAMP,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_app_users_school_id ON app_users(school_id);
-                    CREATE INDEX IF NOT EXISTS idx_app_users_email ON app_users(email);
-                    """;
-                try (Statement statement = connection.createStatement()) {
-                    statement.execute(sql);
-                }
-                log.info("Created missing app_users table in tenant schema");
-            }
-
-            // 2. Ensure class_schedules table
-            boolean scheduleTableExists = false;
-            try (ResultSet resultSet = metaData.getTables(null, "public", "class_schedules", new String[]{"TABLE"})) {
-                scheduleTableExists = resultSet.next();
-            }
-
-            if (!scheduleTableExists) {
-                String sql = """
-                    CREATE TABLE IF NOT EXISTS class_schedules (
-                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                        class_name VARCHAR(50) NOT NULL,
-                        academic_session VARCHAR(50) NOT NULL,
-                        week_number INTEGER NOT NULL DEFAULT 1,
-                        period_name VARCHAR(20) NOT NULL DEFAULT 'P1',
-                        day_of_week VARCHAR(20) NOT NULL,
-                        start_time TIME NOT NULL,
-                        end_time TIME NOT NULL,
-                        schedule_type VARCHAR(20) NOT NULL,
-                        subject VARCHAR(100),
-                        content TEXT,
-                        location VARCHAR(100),
-                        teacher_name VARCHAR(100),
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_class_schedules_class_session ON class_schedules(class_name, academic_session);
-                    CREATE INDEX IF NOT EXISTS idx_class_schedules_class_session_week ON class_schedules(class_name, academic_session, week_number);
-                    """;
-                try (Statement statement = connection.createStatement()) {
-                    statement.execute(sql);
-                }
-                log.info("Created missing class_schedules table in tenant schema");
-            }
-            try (Statement statement = connection.createStatement()) {
-                statement.execute("""
-                    ALTER TABLE class_schedules
-                        ADD COLUMN IF NOT EXISTS week_number INTEGER NOT NULL DEFAULT 1;
-                    ALTER TABLE class_schedules
-                        ADD COLUMN IF NOT EXISTS period_name VARCHAR(20) NOT NULL DEFAULT 'P1';
-                    CREATE INDEX IF NOT EXISTS idx_class_schedules_class_session_week
-                        ON class_schedules(class_name, academic_session, week_number);
-                    CREATE TABLE IF NOT EXISTS class_schedule_periods (
-                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                        class_name VARCHAR(50) NOT NULL,
-                        academic_session VARCHAR(50) NOT NULL,
-                        period_name VARCHAR(20) NOT NULL,
-                        display_order INTEGER NOT NULL,
-                        start_time TIME NOT NULL,
-                        end_time TIME NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        UNIQUE (class_name, academic_session, period_name)
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_class_schedule_periods_class_session
-                        ON class_schedule_periods(class_name, academic_session);
-                    """);
-            }
-        } catch (SQLException ex) {
-            log.warn("Unable to ensure tenant tables exist for datasource", ex);
-        }
+    @Override
+    protected Object determineCurrentLookupKey() {
+        String tenantId = TenantContext.getTenant();
+        return tenantId == null || tenantId.isBlank() ? "MASTER" : tenantId;
     }
 
     private DataSource determineDataSource() {
@@ -215,9 +124,7 @@ public class RoutingDataSource extends AbstractDataSource {
             }
         }
 
-        // If tenant datasource not found, log warning and use master
-        log.warn("RoutingDataSource choose datasource | tenantContext={} using=MASTER reason=tenant-datasource-not-found", tenantId);
-        return masterDataSource;
+        throw new IllegalStateException("No datasource registered for tenant: " + tenantId);
     }
 
     private DataSource tryLoadingTenantDataSource(String tenantId) {

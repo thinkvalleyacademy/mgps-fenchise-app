@@ -236,6 +236,7 @@ public class DatabaseProvisioningService {
         config.setMaxLifetime(1800000);
         config.setAutoCommit(true);
         config.setLeakDetectionThreshold(60000);
+        config.setInitializationFailTimeout(-1);
         
         log.debug("Creating HikariCP datasource for database: {}", databaseName);
         
