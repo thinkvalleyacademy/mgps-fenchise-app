@@ -135,16 +135,21 @@ public class UserService {
         try {
             savedMaster = tenantExecutionService.inMaster(() -> {
                 AppUser masterUser = buildUser(request, userId, email, passwordHash);
+                log.info("createUserInTenant master-save-target | email={} database={}", email, currentDatabaseName());
                 AppUser saved = appUserRepository.save(masterUser);
-                log.info("createUserInTenant master-saved | userId={} email={} schoolId={}", saved.getId(), saved.getEmail(), saved.getSchoolId());
+                log.info("createUserInTenant master-saved | userId={} email={} schoolId={} database={}",
+                    saved.getId(), saved.getEmail(), saved.getSchoolId(), currentDatabaseName());
                 return saved;
             });
             detachIfManaged(savedMaster);
 
             savedTenant = tenantExecutionService.inTenant(school, () -> {
                 AppUser tenantUser = buildUser(request, userId, email, passwordHash);
+                log.info("createUserInTenant tenant-save-target | email={} expectedDatabase={} actualDatabase={}",
+                    email, school.getDatabaseName(), currentDatabaseName());
                 AppUser saved = appUserRepository.save(tenantUser);
-                log.info("createUserInTenant tenant-saved | userId={} email={} schoolId={}", saved.getId(), saved.getEmail(), saved.getSchoolId());
+                log.info("createUserInTenant tenant-saved | userId={} email={} schoolId={} expectedDatabase={} actualDatabase={}",
+                    saved.getId(), saved.getEmail(), saved.getSchoolId(), school.getDatabaseName(), currentDatabaseName());
                 return saved;
             });
 
@@ -175,6 +180,19 @@ public class UserService {
         if (entityManager != null && user != null && entityManager.contains(user)) {
             entityManager.detach(user);
             log.debug("Detached master user before tenant save | userId={}", user.getId());
+        }
+    }
+
+    private String currentDatabaseName() {
+        if (entityManager == null) {
+            return "UNKNOWN";
+        }
+        try {
+            Object result = entityManager.createNativeQuery("select current_database()").getSingleResult();
+            return result != null ? result.toString() : "UNKNOWN";
+        } catch (RuntimeException ex) {
+            log.warn("Unable to read current database for user operation", ex);
+            return "UNKNOWN";
         }
     }
 
