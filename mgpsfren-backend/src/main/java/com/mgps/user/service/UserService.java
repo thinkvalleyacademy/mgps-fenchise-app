@@ -170,6 +170,13 @@ public class UserService {
     }
 
     private AppUser createUser(RegisterUserRequest request) {
+        if (tenantExecutionService != null) {
+            return tenantExecutionService.inMaster(() -> createUserInCurrentDataSource(request));
+        }
+        return createUserInCurrentDataSource(request);
+    }
+
+    private AppUser createUserInCurrentDataSource(RegisterUserRequest request) {
         String email = normalizeEmail(request.getEmail());
         if (appUserRepository.existsByEmail(email)) {
             throw new DuplicateResourceException("User already exists with email: " + email);
@@ -273,6 +280,9 @@ public class UserService {
     }
 
     public boolean hasSuperAdmin() {
+        if (tenantExecutionService != null) {
+            return tenantExecutionService.inMaster(() -> appUserRepository.existsByRole(UserRole.SUPER_ADMIN));
+        }
         return appUserRepository.existsByRole(UserRole.SUPER_ADMIN);
     }
 

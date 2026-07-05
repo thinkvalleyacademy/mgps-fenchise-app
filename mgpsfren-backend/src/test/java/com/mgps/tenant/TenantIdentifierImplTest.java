@@ -200,4 +200,15 @@ class TenantIdentifierImplTest {
 
         assertThat(tenantIdentifier.resolveTenant(request)).isNull();
     }
+
+    @Test
+    @DisplayName("Should keep superadmin setup on the master datasource")
+    void testSuperAdminSetupDoesNotUseDeploymentSubdomain() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/setup/superadmin");
+        request.setServerName("mgpsfren.thinkvalleysoftwares.in");
+        request.addHeader("X-Tenant-Id", "mgpsfren");
+
+        assertThat(tenantIdentifier.resolveTenant(request)).isNull();
+    }
 }

@@ -32,8 +32,10 @@ public class TenantIdentifierImpl implements TenantIdentifier {
     
     @Override
     public String resolveTenant(HttpServletRequest request) {
-        // Special case for login
-        if (request.getRequestURI().endsWith("/auth/login")) {
+        String requestUri = request.getRequestURI();
+
+        // Global public endpoints must never inherit tenant context from host/header.
+        if (requestUri.endsWith("/auth/login") || requestUri.contains("/setup/")) {
             return null;
         }
 

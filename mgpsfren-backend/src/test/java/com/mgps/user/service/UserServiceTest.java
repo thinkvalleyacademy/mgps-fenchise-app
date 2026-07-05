@@ -121,6 +121,15 @@ class UserServiceTest {
     }
 
     @Test
+    void shouldCheckSuperAdminInMasterDatabase() {
+        when(appUserRepository.existsByRole(UserRole.SUPER_ADMIN)).thenReturn(true);
+
+        assertThat(userService.hasSuperAdmin()).isTrue();
+
+        verify(tenantExecutionService).inMaster(any(Supplier.class));
+    }
+
+    @Test
     void shouldRegisterSchoolUserInTenantDatabase() {
         UUID schoolId = UUID.randomUUID();
         SubscriptionPlan subscriptionPlan = SubscriptionPlan.builder()
