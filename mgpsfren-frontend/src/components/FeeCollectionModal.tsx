@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 import { processPayment } from '../api';
 
 interface FeeCollectionModalProps {
@@ -16,34 +15,63 @@ const MONTHS = [
     'October', 'November', 'December', 'January', 'February', 'March'
 ];
 
+function saveReceiptPdf(doc: jsPDF, receiptNumber: string) {
+    const fileName = `Receipt_${receiptNumber || Date.now()}.pdf`;
+    try {
+        doc.save(fileName);
+    } catch (err) {
+        const blobUrl = URL.createObjectURL(doc.output('blob'));
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(blobUrl);
+    }
+}
+
 export default function FeeCollectionModal({ student, fee, schoolId, onClose, onSuccess }: FeeCollectionModalProps) {
     const isMonthly = fee.recurrenceType === 'MONTHLY';
     const totalDue = fee.totalDueTillDate || fee.amountDue;
-    const balance = totalDue - fee.amountPaid - (fee.discountAmount || 0);
+    const balance = fee.outstandingBalance ?? Math.max(0, totalDue - fee.amountPaid - (fee.discountAmount || 0));
+    const paidThroughMonth = isMonthly ? (fee.paidThroughMonth || 0) : 0;
+    const totalMonthsInSession = isMonthly ? (fee.totalMonthsInSession || 12) : 1;
 
     const [paymentMode, setPaymentMode] = useState<'CASH' | 'UPI' | 'ONLINE'>('CASH');
     const [transactionId, setTransactionId] = useState('');
-    const [tillMonth, setTillMonth] = useState<number>(0); 
+    const [tillMonth, setTillMonth] = useState<number>(paidThroughMonth); 
     const [amountToPay, setAmountToPay] = useState<number>(balance);
+    const [paymentPlan, setPaymentPlan] = useState<'CUSTOM' | 'MONTH' | 'QUARTER' | 'YEAR'>('CUSTOM');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [paymentResult, setPaymentResult] = useState<any>(null);
-    const monthsPaid = isMonthly ? Math.floor(fee.amountPaid / fee.amountDue) : 0;
 
     useEffect(() => {
         if (isMonthly) {
-            const nextMonth = Math.min(monthsPaid, 11);
+            const nextMonth = Math.min(paidThroughMonth + 1, totalMonthsInSession);
             setTillMonth(nextMonth);
-            setAmountToPay(fee.amountDue);
+            setPaymentPlan('CUSTOM');
+            setAmountToPay(balance > 0 ? balance : fee.amountDue);
         } else {
             setAmountToPay(balance);
         }
-    }, [fee, balance, isMonthly]);
+    }, [fee, balance, isMonthly, paidThroughMonth, totalMonthsInSession]);
 
     useEffect(() => {
-        if (!isMonthly) return;
-        const monthsToPay = Math.max(1, tillMonth - monthsPaid + 1);
+        if (!isMonthly || paymentPlan === 'CUSTOM') return;
+        const monthsRemaining = Math.max(0, totalMonthsInSession - paidThroughMonth);
+        const monthsToPay = paymentPlan === 'MONTH' ? 1 : paymentPlan === 'QUARTER' ? Math.min(3, monthsRemaining) : monthsRemaining;
+        const calculatedTillMonth = Math.min(totalMonthsInSession, paidThroughMonth + monthsToPay);
+        setTillMonth(calculatedTillMonth);
+    }, [fee.amountDue, isMonthly, paidThroughMonth, paymentPlan, totalMonthsInSession]);
+
+    useEffect(() => {
+        if (!isMonthly || paymentPlan === 'CUSTOM') return;
+        const monthsToPay = Math.max(1, tillMonth - paidThroughMonth);
         setAmountToPay(fee.amountDue * monthsToPay);
-    }, [fee.amountDue, isMonthly, monthsPaid, tillMonth]);
+    }, [fee.amountDue, isMonthly, paidThroughMonth, paymentPlan, tillMonth]);
+
+    const selectedMonthRange = isMonthly && paymentPlan !== 'CUSTOM' && tillMonth > paidThroughMonth;
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -57,9 +85,11 @@ export default function FeeCollectionModal({ student, fee, schoolId, onClose, on
                 amountPaid: amountToPay,
                 paymentMode,
                 transactionId: paymentMode !== 'CASH' ? transactionId : null,
-                monthFrom: isMonthly ? monthsPaid + 1 : null,
-                monthTo: isMonthly ? tillMonth + 1 : null,
-                remarks: isMonthly ? `Paid through ${MONTHS[tillMonth]}` : 'One-time payment'
+                monthFrom: selectedMonthRange ? paidThroughMonth + 1 : null,
+                monthTo: selectedMonthRange ? tillMonth : null,
+                remarks: isMonthly
+                    ? selectedMonthRange ? `Paid through ${MONTHS[tillMonth - 1] || `month ${tillMonth}`}` : 'Monthly fee payment'
+                    : 'One-time payment'
             };
             const result = await processPayment(payload);
             setPaymentResult(result);
@@ -72,7 +102,10 @@ export default function FeeCollectionModal({ student, fee, schoolId, onClose, on
     }
 
     function generatePDF(payment: any) {
-        const doc = new jsPDF() as any;
+        const doc = new jsPDF();
+        const period = isMonthly
+            ? payment.monthTo ? `Till ${MONTHS[payment.monthTo - 1]}` : 'Monthly payment'
+            : 'One-time';
         
         doc.setFontSize(20);
         doc.text('MGPS Franchise School', 105, 20, { align: 'center' });
@@ -83,29 +116,31 @@ export default function FeeCollectionModal({ student, fee, schoolId, onClose, on
         doc.setFontSize(10);
         doc.text(`Receipt No: ${payment.receiptNumber}`, 20, 45);
         doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, 45);
-        doc.text(`Student Name: ${student.firstName} ${student.lastName}`, 20, 55);
-        doc.text(`Admission No: ${student.admissionNumber}`, 20, 60);
-        
-        const tableData = [
-            [fee.feeCategoryName, isMonthly ? `Till ${MONTHS[payment.monthTo - 1]}` : 'One-time', `INR ${payment.amountPaid.toLocaleString()}`],
-            ['Total Collected', '', `INR ${payment.amountPaid.toLocaleString()}`]
-        ];
-        
-        doc.autoTable({
-            startY: 70,
-            head: [['Description', 'Period', 'Amount']],
-            body: tableData,
-            theme: 'striped',
-            headStyles: { fillColor: [212, 175, 55] }
-        });
-        
-        const finalY = (doc as any).lastAutoTable.finalY || 100;
-        doc.text(`Payment Mode: ${payment.paymentMode}`, 20, finalY + 15);
-        if (payment.transactionId) doc.text(`Transaction ID: ${payment.transactionId}`, 20, finalY + 20);
+        doc.text(`Student Name: ${payment.studentName || `${student.firstName} ${student.lastName}`}`, 20, 55);
+        doc.text(`Admission No: ${payment.admissionNumber || student.admissionNumber}`, 20, 60);
+
+        doc.setFillColor(245, 245, 245);
+        doc.rect(20, 70, 170, 10, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.text('Description', 24, 77);
+        doc.text('Period', 94, 77);
+        doc.text('Amount', 150, 77);
+        doc.setFont('helvetica', 'normal');
+        doc.text(payment.feeCategoryName || fee.feeCategoryName || 'Fee', 24, 90);
+        doc.text(period, 94, 90);
+        doc.text(`INR ${payment.amountPaid.toLocaleString()}`, 150, 90);
+        doc.line(20, 96, 190, 96);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Total Collected', 24, 106);
+        doc.text(`INR ${payment.amountPaid.toLocaleString()}`, 150, 106);
+        doc.setFont('helvetica', 'normal');
+
+        doc.text(`Payment Mode: ${payment.paymentMode}`, 20, 125);
+        if (payment.transactionId) doc.text(`Transaction ID: ${payment.transactionId}`, 20, 132);
         
         doc.setFont('helvetica', 'italic');
-        doc.text('Thank you for your payment.', 105, finalY + 40, { align: 'center' });
-        doc.save(`Receipt_${payment.receiptNumber}.pdf`);
+        doc.text('Thank you for your payment.', 105, 155, { align: 'center' });
+        saveReceiptPdf(doc, payment.receiptNumber);
     }
 
     if (paymentResult) {
@@ -140,6 +175,9 @@ export default function FeeCollectionModal({ student, fee, schoolId, onClose, on
                         <span className="badge">{fee.recurrenceType}</span>
                     </div>
                     <p className="hint">Balance: ₹{balance.toLocaleString()}</p>
+                    {isMonthly && (
+                        <p className="hint">Paid through {paidThroughMonth}/{totalMonthsInSession} months</p>
+                    )}
                 </div>
 
                 <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
@@ -159,24 +197,38 @@ export default function FeeCollectionModal({ student, fee, schoolId, onClose, on
                         </label>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    {isMonthly && (
+                        <label>
+                            Collection Type
+                            <select value={paymentPlan} onChange={e => setPaymentPlan(e.target.value as any)}>
+                                <option value="CUSTOM">Custom / random amount</option>
+                                <option value="MONTH">Next month</option>
+                                <option value="QUARTER">Next quarter</option>
+                                <option value="YEAR">Remaining full year</option>
+                            </select>
+                        </label>
+                    )}
+
+                    <div style={{ display: 'grid', gridTemplateColumns: isMonthly && paymentPlan !== 'CUSTOM' ? '1fr 1fr' : '1fr', gap: 12 }}>
                         <label>
                             Amount to Pay (Partial allowed)
                             <input 
                                 type="number" 
                                 value={amountToPay} 
                                 onChange={e => setAmountToPay(parseFloat(e.target.value))} 
-                                max={isMonthly ? undefined : balance}
+                                min="1"
+                                max={!isMonthly && balance > 0 ? balance : undefined}
+                                readOnly={isMonthly && paymentPlan !== 'CUSTOM'}
                                 required 
                             />
                         </label>
 
-                        {isMonthly && (
+                        {isMonthly && paymentPlan !== 'CUSTOM' && (
                             <label>
                                 Pay Through
                                 <select value={tillMonth} onChange={e => setTillMonth(parseInt(e.target.value))}>
-                                    {MONTHS.map((m, i) => (
-                                        <option key={m} value={i} disabled={i < monthsPaid}>{m}</option>
+                                    {MONTHS.slice(0, totalMonthsInSession).map((m, i) => (
+                                        <option key={m} value={i + 1} disabled={i + 1 <= paidThroughMonth}>{m}</option>
                                     ))}
                                 </select>
                             </label>

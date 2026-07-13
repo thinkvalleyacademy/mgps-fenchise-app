@@ -54,8 +54,9 @@ public class FeeController {
     }
 
     @GetMapping("/student/{studentId}")
-    public ResponseEntity<List<StudentFeeDTO>> getStudentFees(@PathVariable UUID studentId) {
-        return ResponseEntity.ok(feeService.getStudentFees(studentId));
+    public ResponseEntity<List<StudentFeeDTO>> getStudentFees(@PathVariable UUID studentId,
+                                                              @RequestParam(required = false) UUID academicYearId) {
+        return ResponseEntity.ok(feeService.getStudentFees(studentId, academicYearId));
     }
 
     @PatchMapping("/student-fees/{id}/discount")
@@ -91,7 +92,8 @@ public class FeeController {
     }
 
     @GetMapping("/reports/student-wise")
-    public ResponseEntity<List<StudentFeeReport>> getStudentReport(@RequestParam UUID classId) {
-        return ResponseEntity.ok(feeService.getStudentWiseReport(classId));
+    public ResponseEntity<List<StudentFeeReport>> getStudentReport(@RequestParam UUID classId,
+                                                                   @RequestParam(required = false) UUID academicYearId) {
+        return ResponseEntity.ok(feeService.getStudentWiseReport(classId, academicYearId));
     }
 }

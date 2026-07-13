@@ -1,11 +1,26 @@
 import { useEffect, useState } from 'react';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 import { fetchFeeCategories, createFeeCategory, fetchFeeStructures, createFeeStructure, fetchStudents, fetchStudentFees, processPayment, fetchAcademicYears, applyFeeDiscount, fetchSchoolFeeReport, fetchClassFeeReport, fetchStudentFeeReport, fetchClasses, assignFeeToStudent, fetchRecentPayments } from '../api';
 import FeeCollectionModal from './FeeCollectionModal';
 
 interface FeeManagementModuleProps {
   schoolId: string;
+}
+
+function saveReceiptPdf(doc: jsPDF, receiptNumber: string) {
+  const fileName = `Receipt_${receiptNumber || Date.now()}.pdf`;
+  try {
+    doc.save(fileName);
+  } catch (err) {
+    const blobUrl = URL.createObjectURL(doc.output('blob'));
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(blobUrl);
+  }
 }
 
 export default function FeeManagementModule({ schoolId }: FeeManagementModuleProps) {
@@ -35,6 +50,34 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
   const [studentFees, setStudentFees] = useState<any[]>([]);
   const [showCollectionModal, setShowCollectionModal] = useState(false);
   const [collectingFee, setCollectingFee] = useState<any>(null);
+
+  function isAdmissionCategory(categoryName: string) {
+    return categoryName.toLowerCase().includes('admission');
+  }
+
+  function isTuitionCategory(categoryName: string) {
+    return categoryName.toLowerCase().includes('tuition');
+  }
+
+  function formatMoney(amount: number) {
+    return Math.max(0, amount || 0).toLocaleString();
+  }
+
+  function handleStructureCategoryChange(categoryId: string) {
+    const category = categories.find(cat => cat.id === categoryId);
+    const recurrenceType = category?.name && isTuitionCategory(category.name)
+      ? 'MONTHLY'
+      : category?.name && isAdmissionCategory(category.name)
+        ? 'ONE_TIME'
+        : structureForm.recurrenceType;
+
+    setStructureForm({
+      ...structureForm,
+      feeCategoryId: categoryId,
+      recurrenceType,
+      dueDate: recurrenceType === 'MONTHLY' ? '' : structureForm.dueDate
+    });
+  }
 
   useEffect(() => {
     loadBaseData();
@@ -76,9 +119,9 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
 
   useEffect(() => {
       if (selectedClassId && activeTab === 'reports') {
-          fetchStudentFeeReport(selectedClassId).then(setStudentReports);
+          fetchStudentFeeReport(selectedClassId, selectedYearId).then(setStudentReports);
       }
-  }, [selectedClassId, activeTab]);
+  }, [selectedClassId, activeTab, selectedYearId]);
 
   async function loadStructures() {
     try {
@@ -99,20 +142,23 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
     doc.setFontSize(10);
     doc.text(`Receipt No: ${payment.receiptNumber}`, 20, 45);
     doc.text(`Date: ${new Date(payment.paymentDate).toLocaleDateString()}`, 150, 45);
-    doc.text(`Amount: ₹${payment.amountPaid.toLocaleString()}`, 20, 55);
-    doc.text(`Mode: ${payment.paymentMode}`, 20, 60);
+    doc.text(`Student: ${payment.studentName || '-'}`, 20, 55);
+    doc.text(`Admission No: ${payment.admissionNumber || '-'}`, 20, 60);
+    doc.text(`Fee Head: ${payment.feeCategoryName || 'Fee'}`, 20, 65);
+    doc.text(`Amount: INR ${payment.amountPaid.toLocaleString()}`, 20, 75);
+    doc.text(`Mode: ${payment.paymentMode}`, 20, 80);
     if (payment.transactionId) {
-      doc.text(`Transaction ID: ${payment.transactionId}`, 20, 65);
+      doc.text(`Transaction ID: ${payment.transactionId}`, 20, 87);
     }
     if (payment.monthFrom || payment.monthTo) {
       const fromMonth = payment.monthFrom ? String(payment.monthFrom) : 'N/A';
       const toMonth = payment.monthTo ? String(payment.monthTo) : 'N/A';
-      doc.text(`Period: ${fromMonth} - ${toMonth}`, 20, 70);
+      doc.text(`Period: ${fromMonth} - ${toMonth}`, 20, 94);
     }
-    doc.text(`Remarks: ${payment.remarks || 'N/A'}`, 20, 80);
+    doc.text(`Remarks: ${payment.remarks || 'N/A'}`, 20, 104);
     doc.setFont('helvetica', 'italic');
-    doc.text('Thank you for your payment.', 105, 100, { align: 'center' });
-    doc.save(`Receipt_${payment.receiptNumber}.pdf`);
+    doc.text('Thank you for your payment.', 105, 125, { align: 'center' });
+    saveReceiptPdf(doc, payment.receiptNumber);
   }
 
   async function handleCreateCategory(e: React.FormEvent) {
@@ -130,8 +176,17 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
   async function handleCreateStructure(e: React.FormEvent) {
     e.preventDefault();
     try {
+      const selectedCategory = categories.find(cat => cat.id === structureForm.feeCategoryId);
+      const recurrenceType = selectedCategory?.name && isTuitionCategory(selectedCategory.name)
+        ? 'MONTHLY'
+        : selectedCategory?.name && isAdmissionCategory(selectedCategory.name)
+          ? 'ONE_TIME'
+          : structureForm.recurrenceType;
+
       await createFeeStructure({
         ...structureForm,
+        recurrenceType,
+        dueDate: recurrenceType === 'MONTHLY' ? null : structureForm.dueDate,
         schoolId,
         academicYearId: selectedYearId,
         amount: parseFloat(structureForm.amount)
@@ -180,7 +235,7 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
     setSelectedStudent(student);
     setShowAssignForm(false);
     try {
-      const fees = await fetchStudentFees(student.studentId || student.id);
+      const fees = await fetchStudentFees(student.studentId || student.id, selectedYearId);
       setStudentFees(fees);
     } catch (err) {
       setError('Failed to load student fees');
@@ -347,7 +402,7 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
             <div className="form-grid">
               <label>
                 Category
-                <select value={structureForm.feeCategoryId} onChange={e => setStructureForm({ ...structureForm, feeCategoryId: e.target.value })} required>
+                <select value={structureForm.feeCategoryId} onChange={e => handleStructureCategoryChange(e.target.value)} required>
                   <option value="">Select Category</option>
                   {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                 </select>
@@ -358,15 +413,22 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
               </label>
               <label>
                 Recurrence
-                <select value={structureForm.recurrenceType} onChange={e => setStructureForm({ ...structureForm, recurrenceType: e.target.value })} required>
+                <select
+                  value={structureForm.recurrenceType}
+                  onChange={e => setStructureForm({ ...structureForm, recurrenceType: e.target.value, dueDate: e.target.value === 'MONTHLY' ? '' : structureForm.dueDate })}
+                  required
+                  disabled={Boolean(categories.find(cat => cat.id === structureForm.feeCategoryId && (isAdmissionCategory(cat.name) || isTuitionCategory(cat.name))))}
+                >
                   <option value="ONE_TIME">One-time (Admission/Annual)</option>
                   <option value="MONTHLY">Monthly Recurring</option>
                 </select>
               </label>
-              <label>
-                Due Date
-                <input type="date" value={structureForm.dueDate} onChange={e => setStructureForm({ ...structureForm, dueDate: e.target.value })} required />
-              </label>
+              {structureForm.recurrenceType !== 'MONTHLY' && (
+                <label>
+                  Due Date
+                  <input type="date" value={structureForm.dueDate} onChange={e => setStructureForm({ ...structureForm, dueDate: e.target.value })} />
+                </label>
+              )}
               <label>
                 Target Class
                 <select value={structureForm.classId} onChange={e => setStructureForm({ ...structureForm, classId: e.target.value })} required>
@@ -402,8 +464,8 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                     <td>{s.feeCategoryName}</td>
                     <td>₹{s.amount.toLocaleString()}</td>
                     <td><span className="badge">{s.recurrenceType}</span></td>
-                    <td>{s.dueDate}</td>
-                    <td>{s.isDefault ? '✅' : '❌'}</td>
+                    <td>{s.recurrenceType === 'MONTHLY' ? 'Monthly cycle' : (s.dueDate || '-')}</td>
+                    <td>{s.isDefault ? 'Yes' : 'No'}</td>
                     <td><span className="badge">{s.active ? 'Active' : 'Inactive'}</span></td>
                   </tr>
                 ))}
@@ -478,13 +540,22 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                       </thead>
                       <tbody>
                         {studentFees.map(sf => {
-                            const balance = (sf.totalDueTillDate || sf.amountDue) - sf.amountPaid - (sf.discountAmount || 0);
+                            const totalDue = sf.totalDueTillDate || sf.amountDue;
+                            const balance = sf.outstandingBalance ?? Math.max(0, totalDue - sf.amountPaid - (sf.discountAmount || 0));
+                            const canCollect = sf.recurrenceType === 'MONTHLY'
+                              ? (sf.paidThroughMonth || 0) < (sf.totalMonthsInSession || 12)
+                              : sf.status !== 'PAID';
                             return (
                           <tr key={sf.id}>
                             <td>{sf.feeCategoryName}</td>
-                            <td><span className="hint">{sf.recurrenceType}</span></td>
+                            <td>
+                              <span className="hint">{sf.recurrenceType}</span>
+                              {sf.recurrenceType === 'MONTHLY' && (
+                                <div className="hint">Paid {sf.paidThroughMonth || 0}/{sf.totalMonthsInSession || 12} months</div>
+                              )}
+                            </td>
                             <td>₹{sf.amountDue.toLocaleString()}</td>
-                            <td>₹{(sf.totalDueTillDate || sf.amountDue).toLocaleString()}</td>
+                            <td>₹{totalDue.toLocaleString()}</td>
                             <td>
                                 {sf.discountAmount > 0 ? (
                                     <span title={sf.discountReason} style={{ color: 'var(--gold)' }}>-₹{sf.discountAmount.toLocaleString()}</span>
@@ -493,11 +564,13 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                                 )}
                             </td>
                             <td>₹{sf.amountPaid.toLocaleString()}</td>
-                            <td><strong style={{ color: balance > 0 ? 'var(--danger)' : '' }}>₹{balance.toLocaleString()}</strong></td>
+                            <td><strong style={{ color: balance > 0 ? 'var(--danger)' : '' }}>₹{formatMoney(balance)}</strong></td>
                             <td><span className={`status-pill ${sf.status.toLowerCase()}`}>{sf.status}</span></td>
                             <td>
-                              {sf.status !== 'PAID' && (
-                                <button className="primary small" style={{ padding: '6px 12px' }} onClick={() => handleCollectClick(sf)}>Collect</button>
+                              {canCollect && (
+                                <button className="primary small" style={{ padding: '6px 12px' }} onClick={() => handleCollectClick(sf)}>
+                                  {sf.status === 'PAID' ? 'Collect Advance' : 'Collect'}
+                                </button>
                               )}
                             </td>
                           </tr>

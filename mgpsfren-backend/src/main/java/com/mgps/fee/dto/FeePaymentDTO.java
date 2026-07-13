@@ -8,6 +8,9 @@ public class FeePaymentDTO {
     private UUID id;
     private UUID schoolId;
     private UUID studentFeeId;
+    private String studentName;
+    private String admissionNumber;
+    private String feeCategoryName;
     private BigDecimal amountPaid;
     private LocalDateTime paymentDate;
     private String paymentMode;
@@ -43,6 +46,30 @@ public class FeePaymentDTO {
 
     public void setStudentFeeId(UUID studentFeeId) {
         this.studentFeeId = studentFeeId;
+    }
+
+    public String getStudentName() {
+        return studentName;
+    }
+
+    public void setStudentName(String studentName) {
+        this.studentName = studentName;
+    }
+
+    public String getAdmissionNumber() {
+        return admissionNumber;
+    }
+
+    public void setAdmissionNumber(String admissionNumber) {
+        this.admissionNumber = admissionNumber;
+    }
+
+    public String getFeeCategoryName() {
+        return feeCategoryName;
+    }
+
+    public void setFeeCategoryName(String feeCategoryName) {
+        this.feeCategoryName = feeCategoryName;
     }
 
     public BigDecimal getAmountPaid() {

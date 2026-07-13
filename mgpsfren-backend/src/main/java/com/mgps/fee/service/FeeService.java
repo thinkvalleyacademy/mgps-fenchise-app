@@ -25,9 +25,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -35,6 +37,9 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class FeeService {
+
+    private static final String RECURRENCE_ONE_TIME = "ONE_TIME";
+    private static final String RECURRENCE_MONTHLY = "MONTHLY";
 
     @Autowired
     private FeeCategoryRepository categoryRepository;
@@ -60,6 +65,11 @@ public class FeeService {
     // --- Fee Category Operations ---
 
     public FeeCategoryDTO createCategory(FeeCategoryDTO dto) {
+        categoryRepository.findBySchoolIdAndNameIgnoreCase(dto.getSchoolId(), dto.getName())
+                .ifPresent(existing -> {
+                    throw new BusinessLogicException("Fee category already exists");
+                });
+
         FeeCategory category = new FeeCategory();
         category.setId(UUID.randomUUID());
         category.setSchoolId(dto.getSchoolId());
@@ -72,6 +82,7 @@ public class FeeService {
     }
 
     public List<FeeCategoryDTO> getCategories(UUID schoolId) {
+        ensureDefaultCategories(schoolId);
         return categoryRepository.findBySchoolId(schoolId).stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
@@ -94,9 +105,10 @@ public class FeeService {
         structure.setClassId(dto.getClassId());
         structure.setCategory(category);
         structure.setAmount(dto.getAmount());
-        structure.setDueDate(dto.getDueDate());
+        String recurrenceType = resolveRecurrenceType(dto.getRecurrenceType(), category.getName());
+        structure.setDueDate(RECURRENCE_MONTHLY.equals(recurrenceType) ? null : dto.getDueDate());
         structure.setIsDefault(dto.getIsDefault() != null ? dto.getIsDefault() : false);
-        structure.setRecurrenceType(dto.getRecurrenceType() != null ? dto.getRecurrenceType() : "ONE_TIME");
+        structure.setRecurrenceType(recurrenceType);
         structure.setActive(true);
 
         FeeStructure saved = structureRepository.save(structure);
@@ -141,7 +153,7 @@ public class FeeService {
         studentFee.setAmountPaid(BigDecimal.ZERO);
         studentFee.setDiscountAmount(BigDecimal.ZERO);
         studentFee.setStatus(FeeStatus.UNPAID);
-        studentFee.setDueDate(structure.getDueDate());
+        studentFee.setDueDate(RECURRENCE_MONTHLY.equals(structure.getRecurrenceType()) ? null : structure.getDueDate());
 
         StudentFee saved = studentFeeRepository.save(studentFee);
         return mapToDTO(saved);
@@ -155,27 +167,39 @@ public class FeeService {
         studentFee.setDiscountReason(reason);
         
         // Recalculate status
-        BigDecimal effectiveDue = calculateTotalDueTillDate(studentFee).subtract(discountAmount);
-        if (studentFee.getAmountPaid().compareTo(effectiveDue) >= 0) {
-            studentFee.setStatus(FeeStatus.PAID);
-        } else if (studentFee.getAmountPaid().compareTo(BigDecimal.ZERO) > 0) {
-            studentFee.setStatus(FeeStatus.PARTIAL);
-        }
+        updateStatus(studentFee);
         
         studentFeeRepository.save(studentFee);
     }
 
-    public List<StudentFeeDTO> getStudentFees(UUID studentId) {
+    public List<StudentFeeDTO> getStudentFees(UUID studentId, UUID academicYearId) {
         return studentFeeRepository.findByStudentId(studentId).stream()
+                .filter(sf -> academicYearId == null || academicYearId.equals(sf.getFeeStructure().getAcademicYearId()))
+                .peek(this::updateStatus)
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
+    }
+
+    public int refreshDueStatuses() {
+        List<StudentFee> fees = studentFeeRepository.findAll();
+        int updated = 0;
+        for (StudentFee fee : fees) {
+            FeeStatus previous = fee.getStatus();
+            updateStatus(fee);
+            if (previous != fee.getStatus()) {
+                updated++;
+            }
+        }
+        studentFeeRepository.saveAll(fees);
+        return updated;
     }
 
     // --- Reporting Operations ---
 
     public SchoolFeeReport getSchoolOverallReport(UUID schoolId, UUID academicYearId) {
-        List<StudentFee> allFees = studentFeeRepository.findBySchoolId(schoolId); // Need a better way to filter by year if many
-        // For simplicity, let's assume we filter manually or use a custom query
+        List<StudentFee> allFees = studentFeeRepository.findBySchoolId(schoolId).stream()
+                .filter(sf -> academicYearId.equals(sf.getFeeStructure().getAcademicYearId()))
+                .collect(Collectors.toList());
         
         BigDecimal expected = allFees.stream().map(this::calculateTotalDueTillDate).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal paid = allFees.stream().map(StudentFee::getAmountPaid).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -186,7 +210,7 @@ public class FeeService {
         report.setOverallExpected(expected);
         report.setOverallCollected(paid);
         report.setOverallDiscounted(discounted);
-        report.setOverallOutstanding(expected.subtract(paid).subtract(discounted));
+        report.setOverallOutstanding(clampZero(expected.subtract(paid).subtract(discounted)));
         report.setActiveStudentsCount((int) allFees.stream().map(sf -> sf.getStudent().getId()).distinct().count());
         
         return report;
@@ -197,6 +221,7 @@ public class FeeService {
         return classRepository.findBySchoolId(schoolId).stream().map(c -> {
             List<StudentFee> classFees = studentFeeRepository.findBySchoolId(schoolId).stream()
                     .filter(sf -> sf.getStudent().getClassId().equals(c.getId()))
+                    .filter(sf -> academicYearId.equals(sf.getFeeStructure().getAcademicYearId()))
                     .collect(Collectors.toList());
             
             BigDecimal expected = classFees.stream().map(this::calculateTotalDueTillDate).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -210,14 +235,16 @@ public class FeeService {
             report.setTotalExpected(expected);
             report.setTotalCollected(paid);
             report.setTotalDiscounted(discounted);
-            report.setTotalOutstanding(expected.subtract(paid).subtract(discounted));
+            report.setTotalOutstanding(clampZero(expected.subtract(paid).subtract(discounted)));
             return report;
         }).collect(Collectors.toList());
     }
 
-    public List<StudentFeeReport> getStudentWiseReport(UUID classId) {
+    public List<StudentFeeReport> getStudentWiseReport(UUID classId, UUID academicYearId) {
         return studentRepository.findByClassId(classId).stream().map(s -> {
-            List<StudentFee> fees = studentFeeRepository.findByStudentId(s.getId());
+            List<StudentFee> fees = studentFeeRepository.findByStudentId(s.getId()).stream()
+                    .filter(sf -> academicYearId == null || academicYearId.equals(sf.getFeeStructure().getAcademicYearId()))
+                    .collect(Collectors.toList());
             
             BigDecimal expected = fees.stream().map(this::calculateTotalDueTillDate).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal paid = fees.stream().map(StudentFee::getAmountPaid).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -230,11 +257,13 @@ public class FeeService {
             report.setTotalExpected(expected);
             report.setTotalCollected(paid);
             report.setTotalDiscounted(discounted);
-            report.setTotalOutstanding(expected.subtract(paid).subtract(discounted));
+            report.setTotalOutstanding(clampZero(expected.subtract(paid).subtract(discounted)));
             
-            BigDecimal balance = expected.subtract(paid).subtract(discounted);
+            BigDecimal balance = clampZero(expected.subtract(paid).subtract(discounted));
             if (balance.compareTo(BigDecimal.ZERO) <= 0 && expected.compareTo(BigDecimal.ZERO) > 0) {
                 report.setStatus("PAID");
+            } else if (expected.compareTo(BigDecimal.ZERO) > 0) {
+                report.setStatus("DUE");
             } else if (paid.compareTo(BigDecimal.ZERO) > 0) {
                 report.setStatus("PARTIAL");
             } else {
@@ -250,6 +279,12 @@ public class FeeService {
     public FeePaymentDTO processPayment(FeePaymentDTO dto) {
         StudentFee studentFee = studentFeeRepository.findById(dto.getStudentFeeId())
                 .orElseThrow(() -> new RuntimeException("Student Fee record not found"));
+
+        if (dto.getAmountPaid() == null || dto.getAmountPaid().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessLogicException("Payment amount must be greater than zero");
+        }
+
+        validateMonthlyPaymentRange(studentFee, dto);
 
         FeePayment payment = new FeePayment();
         payment.setId(UUID.randomUUID());
@@ -270,12 +305,7 @@ public class FeeService {
         // Update StudentFee status and paid amount
         studentFee.setAmountPaid(studentFee.getAmountPaid().add(dto.getAmountPaid()));
         
-        BigDecimal effectiveDue = calculateTotalDueTillDate(studentFee).subtract(studentFee.getDiscountAmount());
-        if (studentFee.getAmountPaid().compareTo(effectiveDue) >= 0) {
-            studentFee.setStatus(FeeStatus.PAID);
-        } else if (studentFee.getAmountPaid().compareTo(BigDecimal.ZERO) > 0) {
-            studentFee.setStatus(FeeStatus.PARTIAL);
-        }
+        updateStatus(studentFee);
         studentFeeRepository.save(studentFee);
 
         return mapToDTO(saved);
@@ -292,11 +322,18 @@ public class FeeService {
     // --- Calculation Helpers ---
 
     private BigDecimal calculateTotalDueTillDate(StudentFee sf) {
-        if (sf.getFeeStructure().getRecurrenceType().equals("ONE_TIME")) {
+        if (RECURRENCE_ONE_TIME.equals(sf.getFeeStructure().getRecurrenceType())) {
             return sf.getAmountDue();
         }
 
-        // Monthly fee logic
+        return sf.getAmountDue().multiply(new BigDecimal(calculateDueThroughMonth(sf)));
+    }
+
+    private int calculateDueThroughMonth(StudentFee sf) {
+        if (!RECURRENCE_MONTHLY.equals(sf.getFeeStructure().getRecurrenceType())) {
+            return 1;
+        }
+
         AcademicYear year = academicYearRepository.findById(sf.getFeeStructure().getAcademicYearId())
                 .orElseThrow(() -> new RuntimeException("Academic Year not found"));
         
@@ -304,14 +341,113 @@ public class FeeService {
         LocalDate today = LocalDate.now();
         
         if (today.isBefore(sessionStart)) {
-            return BigDecimal.ZERO;
+            return 0;
         }
+
+        LocalDate effectiveDate = today.isAfter(year.getEndDate()) ? year.getEndDate() : today;
         
         // Months elapsed (inclusive of current month)
-        Period period = Period.between(sessionStart.withDayOfMonth(1), today.withDayOfMonth(1));
+        Period period = Period.between(sessionStart.withDayOfMonth(1), effectiveDate.withDayOfMonth(1));
         int monthsElapsed = period.getYears() * 12 + period.getMonths() + 1;
         
-        return sf.getAmountDue().multiply(new BigDecimal(monthsElapsed));
+        return Math.min(monthsElapsed, calculateTotalMonthsInSession(sf));
+    }
+
+    private int calculatePaidThroughMonth(StudentFee sf) {
+        if (!RECURRENCE_MONTHLY.equals(sf.getFeeStructure().getRecurrenceType()) || sf.getAmountDue().compareTo(BigDecimal.ZERO) <= 0) {
+            return 0;
+        }
+
+        BigDecimal coveredAmount = safeAmount(sf.getAmountPaid()).add(safeAmount(sf.getDiscountAmount()));
+        int coveredMonths = coveredAmount.divide(sf.getAmountDue(), 0, RoundingMode.FLOOR).intValue();
+        return Math.min(coveredMonths, calculateTotalMonthsInSession(sf));
+    }
+
+    private int calculateTotalMonthsInSession(StudentFee sf) {
+        if (!RECURRENCE_MONTHLY.equals(sf.getFeeStructure().getRecurrenceType())) {
+            return 1;
+        }
+
+        AcademicYear year = academicYearRepository.findById(sf.getFeeStructure().getAcademicYearId())
+                .orElseThrow(() -> new RuntimeException("Academic Year not found"));
+        long months = ChronoUnit.MONTHS.between(year.getStartDate().withDayOfMonth(1), year.getEndDate().withDayOfMonth(1)) + 1;
+        return Math.max(1, (int) months);
+    }
+
+    private BigDecimal calculateOutstandingBalance(StudentFee sf) {
+        return clampZero(calculateTotalDueTillDate(sf).subtract(safeAmount(sf.getAmountPaid())).subtract(safeAmount(sf.getDiscountAmount())));
+    }
+
+    private void updateStatus(StudentFee studentFee) {
+        BigDecimal totalDue = calculateTotalDueTillDate(studentFee);
+        BigDecimal outstanding = calculateOutstandingBalance(studentFee);
+
+        if (totalDue.compareTo(BigDecimal.ZERO) > 0 && outstanding.compareTo(BigDecimal.ZERO) == 0) {
+            studentFee.setStatus(FeeStatus.PAID);
+        } else if (totalDue.compareTo(BigDecimal.ZERO) > 0 && outstanding.compareTo(BigDecimal.ZERO) > 0) {
+            studentFee.setStatus(FeeStatus.DUE);
+        } else if (safeAmount(studentFee.getAmountPaid()).compareTo(BigDecimal.ZERO) > 0 || safeAmount(studentFee.getDiscountAmount()).compareTo(BigDecimal.ZERO) > 0) {
+            studentFee.setStatus(FeeStatus.PARTIAL);
+        } else {
+            studentFee.setStatus(FeeStatus.UNPAID);
+        }
+    }
+
+    private BigDecimal clampZero(BigDecimal amount) {
+        return amount.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : amount;
+    }
+
+    private BigDecimal safeAmount(BigDecimal amount) {
+        return amount == null ? BigDecimal.ZERO : amount;
+    }
+
+    private void validateMonthlyPaymentRange(StudentFee studentFee, FeePaymentDTO dto) {
+        if (!RECURRENCE_MONTHLY.equals(studentFee.getFeeStructure().getRecurrenceType())) {
+            return;
+        }
+
+        Integer monthFrom = dto.getMonthFrom();
+        Integer monthTo = dto.getMonthTo();
+        if (monthFrom == null && monthTo == null) {
+            return;
+        }
+        if (monthFrom == null || monthTo == null || monthFrom < 1 || monthTo < monthFrom || monthTo > calculateTotalMonthsInSession(studentFee)) {
+            throw new BusinessLogicException("Invalid payment month range");
+        }
+    }
+
+    private String resolveRecurrenceType(String requestedRecurrenceType, String categoryName) {
+        String normalizedCategory = categoryName == null ? "" : categoryName.trim().toLowerCase();
+        if (normalizedCategory.contains("tuition")) {
+            return RECURRENCE_MONTHLY;
+        }
+        if (normalizedCategory.contains("admission")) {
+            return RECURRENCE_ONE_TIME;
+        }
+
+        if (RECURRENCE_MONTHLY.equalsIgnoreCase(requestedRecurrenceType)) {
+            return RECURRENCE_MONTHLY;
+        }
+        return RECURRENCE_ONE_TIME;
+    }
+
+    private void ensureDefaultCategories(UUID schoolId) {
+        ensureCategory(schoolId, "Admission fee", "One-time admission fee");
+        ensureCategory(schoolId, "Tuition fee", "Monthly tuition fee");
+    }
+
+    private void ensureCategory(UUID schoolId, String name, String description) {
+        if (categoryRepository.findBySchoolIdAndNameIgnoreCase(schoolId, name).isPresent()) {
+            return;
+        }
+
+        FeeCategory category = new FeeCategory();
+        category.setId(UUID.randomUUID());
+        category.setSchoolId(schoolId);
+        category.setName(name);
+        category.setDescription(description);
+        category.setActive(true);
+        categoryRepository.save(category);
     }
 
     // --- Mapping Helpers ---
@@ -358,6 +494,10 @@ public class FeeService {
         dto.setDiscountReason(entity.getDiscountReason());
         dto.setRecurrenceType(entity.getFeeStructure().getRecurrenceType());
         dto.setTotalDueTillDate(calculateTotalDueTillDate(entity));
+        dto.setOutstandingBalance(calculateOutstandingBalance(entity));
+        dto.setDueThroughMonth(calculateDueThroughMonth(entity));
+        dto.setPaidThroughMonth(calculatePaidThroughMonth(entity));
+        dto.setTotalMonthsInSession(calculateTotalMonthsInSession(entity));
         return dto;
     }
 
@@ -366,6 +506,9 @@ public class FeeService {
         dto.setId(entity.getId());
         dto.setSchoolId(entity.getSchoolId());
         dto.setStudentFeeId(entity.getStudentFee().getId());
+        dto.setStudentName(entity.getStudentFee().getStudent().getFirstName() + " " + entity.getStudentFee().getStudent().getLastName());
+        dto.setAdmissionNumber(entity.getStudentFee().getStudent().getAdmissionNumber());
+        dto.setFeeCategoryName(entity.getStudentFee().getFeeStructure().getCategory().getName());
         dto.setAmountPaid(entity.getAmountPaid());
         dto.setPaymentDate(entity.getPaymentDate());
         dto.setPaymentMode(entity.getPaymentMode());

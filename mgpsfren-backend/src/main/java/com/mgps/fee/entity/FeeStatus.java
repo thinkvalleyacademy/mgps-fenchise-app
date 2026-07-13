@@ -2,6 +2,7 @@ package com.mgps.fee.entity;
 
 public enum FeeStatus {
     UNPAID("Unpaid"),
+    DUE("Due"),
     PARTIAL("Partial"),
     PAID("Paid");
 

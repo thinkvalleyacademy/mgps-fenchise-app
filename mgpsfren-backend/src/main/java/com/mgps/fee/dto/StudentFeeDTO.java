@@ -19,6 +19,10 @@ public class StudentFeeDTO {
     private String discountReason;
     private String recurrenceType; // ONE_TIME, MONTHLY
     private BigDecimal totalDueTillDate; // Calculated based on elapsed months for monthly
+    private BigDecimal outstandingBalance;
+    private Integer dueThroughMonth;
+    private Integer paidThroughMonth;
+    private Integer totalMonthsInSession;
 
     public StudentFeeDTO() {
     }
@@ -133,5 +137,37 @@ public class StudentFeeDTO {
 
     public void setTotalDueTillDate(BigDecimal totalDueTillDate) {
         this.totalDueTillDate = totalDueTillDate;
+    }
+
+    public BigDecimal getOutstandingBalance() {
+        return outstandingBalance;
+    }
+
+    public void setOutstandingBalance(BigDecimal outstandingBalance) {
+        this.outstandingBalance = outstandingBalance;
+    }
+
+    public Integer getDueThroughMonth() {
+        return dueThroughMonth;
+    }
+
+    public void setDueThroughMonth(Integer dueThroughMonth) {
+        this.dueThroughMonth = dueThroughMonth;
+    }
+
+    public Integer getPaidThroughMonth() {
+        return paidThroughMonth;
+    }
+
+    public void setPaidThroughMonth(Integer paidThroughMonth) {
+        this.paidThroughMonth = paidThroughMonth;
+    }
+
+    public Integer getTotalMonthsInSession() {
+        return totalMonthsInSession;
+    }
+
+    public void setTotalMonthsInSession(Integer totalMonthsInSession) {
+        this.totalMonthsInSession = totalMonthsInSession;
     }
 }

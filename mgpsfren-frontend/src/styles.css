@@ -152,6 +152,25 @@ textarea {
   border: 1px solid rgba(255, 127, 143, 0.3);
 }
 
+.status-pill.paid {
+  background: rgba(123, 229, 200, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(123, 229, 200, 0.3);
+}
+
+.status-pill.due,
+.status-pill.unpaid {
+  background: rgba(255, 127, 143, 0.15);
+  color: var(--danger);
+  border: 1px solid rgba(255, 127, 143, 0.3);
+}
+
+.status-pill.partial {
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--gold);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
 .detail-view {
   padding: 24px;
   background: rgba(255, 255, 255, 0.03);

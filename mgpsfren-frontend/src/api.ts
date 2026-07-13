@@ -268,16 +268,18 @@ export async function fetchClassFeeReport(schoolId: string, academicYearId: stri
   return request(`/fees/reports/class-wise?schoolId=${schoolId}&academicYearId=${academicYearId}`);
 }
 
-export async function fetchStudentFeeReport(classId: string): Promise<any[]> {
-  return request(`/fees/reports/student-wise?classId=${classId}`);
+export async function fetchStudentFeeReport(classId: string, academicYearId?: string): Promise<any[]> {
+  const yearQuery = academicYearId ? `&academicYearId=${academicYearId}` : '';
+  return request(`/fees/reports/student-wise?classId=${classId}${yearQuery}`);
 }
 
 export async function assignFeeToStudent(studentId: string, structureId: string): Promise<any> {
   return request(`/fees/assign?studentId=${studentId}&structureId=${structureId}`, { method: 'POST' });
 }
 
-export async function fetchStudentFees(studentId: string): Promise<any[]> {
-  return request(`/fees/student/${studentId}`);
+export async function fetchStudentFees(studentId: string, academicYearId?: string): Promise<any[]> {
+  const query = academicYearId ? `?academicYearId=${academicYearId}` : '';
+  return request(`/fees/student/${studentId}${query}`);
 }
 
 export async function processPayment(payload: any): Promise<any> {
