@@ -62,6 +62,7 @@ const initialForm: SchoolRegistrationPayload = {
   city: 'Pune',
   state: 'Maharashtra',
   postalCode: '411001',
+  logoUrl: '',
   subscriptionPlanId: 'basic'
 };
 

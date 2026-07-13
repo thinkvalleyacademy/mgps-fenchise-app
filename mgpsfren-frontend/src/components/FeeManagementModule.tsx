@@ -23,6 +23,25 @@ function saveReceiptPdf(doc: jsPDF, receiptNumber: string) {
   }
 }
 
+function drawReceiptHeader(doc: jsPDF, payment: any) {
+  const schoolName = payment.schoolName || 'MGPS Franchise School';
+  const logoUrl = payment.schoolLogoUrl;
+
+  if (logoUrl) {
+    try {
+      doc.addImage(logoUrl, 20, 12, 24, 24);
+    } catch (err) {
+      console.warn('Unable to draw school logo on receipt', err);
+    }
+  }
+
+  doc.setFontSize(18);
+  doc.text(schoolName, 105, 20, { align: 'center' });
+  doc.setFontSize(12);
+  doc.text('Fee Receipt', 105, 30, { align: 'center' });
+  doc.line(20, 38, 190, 38);
+}
+
 export default function FeeManagementModule({ schoolId }: FeeManagementModuleProps) {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'categories' | 'structures' | 'collection' | 'reports'>('dashboard');
   const [categories, setCategories] = useState<any[]>([]);
@@ -134,30 +153,26 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
 
   function downloadReceipt(payment: any) {
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text('MGPS Franchise School', 105, 20, { align: 'center' });
-    doc.setFontSize(12);
-    doc.text('Fee Receipt', 105, 30, { align: 'center' });
-    doc.line(20, 35, 190, 35);
+    drawReceiptHeader(doc, payment);
     doc.setFontSize(10);
-    doc.text(`Receipt No: ${payment.receiptNumber}`, 20, 45);
-    doc.text(`Date: ${new Date(payment.paymentDate).toLocaleDateString()}`, 150, 45);
-    doc.text(`Student: ${payment.studentName || '-'}`, 20, 55);
-    doc.text(`Admission No: ${payment.admissionNumber || '-'}`, 20, 60);
-    doc.text(`Fee Head: ${payment.feeCategoryName || 'Fee'}`, 20, 65);
-    doc.text(`Amount: INR ${payment.amountPaid.toLocaleString()}`, 20, 75);
-    doc.text(`Mode: ${payment.paymentMode}`, 20, 80);
+    doc.text(`Receipt No: ${payment.receiptNumber}`, 20, 48);
+    doc.text(`Date: ${new Date(payment.paymentDate).toLocaleDateString()}`, 150, 48);
+    doc.text(`Student: ${payment.studentName || '-'}`, 20, 58);
+    doc.text(`Admission No: ${payment.admissionNumber || '-'}`, 20, 63);
+    doc.text(`Fee Head: ${payment.feeCategoryName || 'Fee'}`, 20, 68);
+    doc.text(`Amount: INR ${payment.amountPaid.toLocaleString()}`, 20, 78);
+    doc.text(`Mode: ${payment.paymentMode}`, 20, 83);
     if (payment.transactionId) {
-      doc.text(`Transaction ID: ${payment.transactionId}`, 20, 87);
+      doc.text(`Transaction ID: ${payment.transactionId}`, 20, 90);
     }
     if (payment.monthFrom || payment.monthTo) {
       const fromMonth = payment.monthFrom ? String(payment.monthFrom) : 'N/A';
       const toMonth = payment.monthTo ? String(payment.monthTo) : 'N/A';
-      doc.text(`Period: ${fromMonth} - ${toMonth}`, 20, 94);
+      doc.text(`Period: ${fromMonth} - ${toMonth}`, 20, 97);
     }
-    doc.text(`Remarks: ${payment.remarks || 'N/A'}`, 20, 104);
+    doc.text(`Remarks: ${payment.remarks || 'N/A'}`, 20, 107);
     doc.setFont('helvetica', 'italic');
-    doc.text('Thank you for your payment.', 105, 125, { align: 'center' });
+    doc.text('Thank you for your payment.', 105, 128, { align: 'center' });
     saveReceiptPdf(doc, payment.receiptNumber);
   }
 

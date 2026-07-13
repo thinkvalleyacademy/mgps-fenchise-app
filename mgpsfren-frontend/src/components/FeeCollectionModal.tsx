@@ -31,6 +31,25 @@ function saveReceiptPdf(doc: jsPDF, receiptNumber: string) {
     }
 }
 
+function drawReceiptHeader(doc: jsPDF, payment: any) {
+    const schoolName = payment.schoolName || 'MGPS Franchise School';
+    const logoUrl = payment.schoolLogoUrl;
+
+    if (logoUrl) {
+        try {
+            doc.addImage(logoUrl, 20, 12, 24, 24);
+        } catch (err) {
+            console.warn('Unable to draw school logo on receipt', err);
+        }
+    }
+
+    doc.setFontSize(20);
+    doc.text(schoolName, 105, 20, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text('Fee Receipt', 105, 30, { align: 'center' });
+    doc.line(20, 38, 190, 38);
+}
+
 export default function FeeCollectionModal({ student, fee, schoolId, onClose, onSuccess }: FeeCollectionModalProps) {
     const isMonthly = fee.recurrenceType === 'MONTHLY';
     const totalDue = fee.totalDueTillDate || fee.amountDue;
@@ -106,40 +125,36 @@ export default function FeeCollectionModal({ student, fee, schoolId, onClose, on
         const period = isMonthly
             ? payment.monthTo ? `Till ${MONTHS[payment.monthTo - 1]}` : 'Monthly payment'
             : 'One-time';
-        
-        doc.setFontSize(20);
-        doc.text('MGPS Franchise School', 105, 20, { align: 'center' });
-        doc.setFontSize(12);
-        doc.text('Fee Receipt', 105, 30, { align: 'center' });
-        doc.line(20, 35, 190, 35);
+
+        drawReceiptHeader(doc, payment);
         
         doc.setFontSize(10);
-        doc.text(`Receipt No: ${payment.receiptNumber}`, 20, 45);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, 45);
-        doc.text(`Student Name: ${payment.studentName || `${student.firstName} ${student.lastName}`}`, 20, 55);
-        doc.text(`Admission No: ${payment.admissionNumber || student.admissionNumber}`, 20, 60);
+        doc.text(`Receipt No: ${payment.receiptNumber}`, 20, 48);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, 48);
+        doc.text(`Student Name: ${payment.studentName || `${student.firstName} ${student.lastName}`}`, 20, 58);
+        doc.text(`Admission No: ${payment.admissionNumber || student.admissionNumber}`, 20, 63);
 
         doc.setFillColor(245, 245, 245);
-        doc.rect(20, 70, 170, 10, 'F');
+        doc.rect(20, 73, 170, 10, 'F');
         doc.setFont('helvetica', 'bold');
-        doc.text('Description', 24, 77);
-        doc.text('Period', 94, 77);
-        doc.text('Amount', 150, 77);
+        doc.text('Description', 24, 80);
+        doc.text('Period', 94, 80);
+        doc.text('Amount', 150, 80);
         doc.setFont('helvetica', 'normal');
-        doc.text(payment.feeCategoryName || fee.feeCategoryName || 'Fee', 24, 90);
-        doc.text(period, 94, 90);
-        doc.text(`INR ${payment.amountPaid.toLocaleString()}`, 150, 90);
-        doc.line(20, 96, 190, 96);
+        doc.text(payment.feeCategoryName || fee.feeCategoryName || 'Fee', 24, 93);
+        doc.text(period, 94, 93);
+        doc.text(`INR ${payment.amountPaid.toLocaleString()}`, 150, 93);
+        doc.line(20, 99, 190, 99);
         doc.setFont('helvetica', 'bold');
-        doc.text('Total Collected', 24, 106);
-        doc.text(`INR ${payment.amountPaid.toLocaleString()}`, 150, 106);
+        doc.text('Total Collected', 24, 109);
+        doc.text(`INR ${payment.amountPaid.toLocaleString()}`, 150, 109);
         doc.setFont('helvetica', 'normal');
 
-        doc.text(`Payment Mode: ${payment.paymentMode}`, 20, 125);
-        if (payment.transactionId) doc.text(`Transaction ID: ${payment.transactionId}`, 20, 132);
+        doc.text(`Payment Mode: ${payment.paymentMode}`, 20, 128);
+        if (payment.transactionId) doc.text(`Transaction ID: ${payment.transactionId}`, 20, 135);
         
         doc.setFont('helvetica', 'italic');
-        doc.text('Thank you for your payment.', 105, 155, { align: 'center' });
+        doc.text('Thank you for your payment.', 105, 158, { align: 'center' });
         saveReceiptPdf(doc, payment.receiptNumber);
     }
 
