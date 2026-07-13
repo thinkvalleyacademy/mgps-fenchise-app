@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS schools (
     city VARCHAR(100),
     state VARCHAR(100),
     postal_code VARCHAR(10),
-    logo_url VARCHAR(255),
+    logo_url TEXT,
     database_name VARCHAR(100) UNIQUE NOT NULL,
     subscription_plan_id UUID,
     status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',

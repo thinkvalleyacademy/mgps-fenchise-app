@@ -1,0 +1,1 @@
+ALTER TABLE schools ALTER COLUMN logo_url TYPE TEXT;

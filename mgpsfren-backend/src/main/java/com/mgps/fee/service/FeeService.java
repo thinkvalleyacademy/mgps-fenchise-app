@@ -21,6 +21,8 @@ import com.mgps.fee.repository.StudentFeeRepository;
 import com.mgps.student.entity.Student;
 import com.mgps.student.repository.StudentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,6 +63,9 @@ public class FeeService {
 
     @Autowired
     private AcademicYearRepository academicYearRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     // --- Fee Category Operations ---
 
@@ -509,6 +514,9 @@ public class FeeService {
         dto.setStudentName(entity.getStudentFee().getStudent().getFirstName() + " " + entity.getStudentFee().getStudent().getLastName());
         dto.setAdmissionNumber(entity.getStudentFee().getStudent().getAdmissionNumber());
         dto.setFeeCategoryName(entity.getStudentFee().getFeeStructure().getCategory().getName());
+        SchoolBranding branding = findSchoolBranding(entity.getSchoolId());
+        dto.setSchoolName(branding.schoolName());
+        dto.setSchoolLogoUrl(branding.logoUrl());
         dto.setAmountPaid(entity.getAmountPaid());
         dto.setPaymentDate(entity.getPaymentDate());
         dto.setPaymentMode(entity.getPaymentMode());
@@ -519,5 +527,22 @@ public class FeeService {
         dto.setMonthFrom(entity.getMonthFrom());
         dto.setMonthTo(entity.getMonthTo());
         return dto;
+    }
+
+    private SchoolBranding findSchoolBranding(UUID schoolId) {
+        try {
+            return jdbcTemplate.queryForObject("""
+                    SELECT school_name, logo_url
+                    FROM tenant_school_snapshot
+                    WHERE school_id = ?
+                    """,
+                    (rs, rowNum) -> new SchoolBranding(rs.getString("school_name"), rs.getString("logo_url")),
+                    schoolId);
+        } catch (DataAccessException ex) {
+            return new SchoolBranding("School", null);
+        }
+    }
+
+    private record SchoolBranding(String schoolName, String logoUrl) {
     }
 }

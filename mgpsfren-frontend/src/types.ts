@@ -29,6 +29,7 @@ export interface SchoolSummary {
   city?: string;
   state?: string;
   databaseName: string;
+  logoUrl?: string;
   status: SchoolStatus;
   subscriptionPlan?: SubscriptionPlan;
   createdAt?: string;
@@ -43,6 +44,7 @@ export interface SchoolRegistrationPayload {
   city: string;
   state: string;
   postalCode: string;
+  logoUrl: string;
   subscriptionPlanId: string;
 }
 
@@ -102,6 +104,7 @@ export interface TenantSchoolOverview {
     postalCode?: string;
     status?: string;
     databaseName?: string;
+    logoUrl?: string;
     subscriptionPlanId?: string;
     subscriptionPlanName?: string;
     maxStudents?: number;

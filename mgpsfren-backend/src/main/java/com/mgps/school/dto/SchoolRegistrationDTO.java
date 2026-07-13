@@ -15,13 +15,14 @@ public class SchoolRegistrationDTO {
     private String city;
     private String state;
     private String postalCode;
+    private String logoUrl;
     private UUID subscriptionPlanId;
 
     public SchoolRegistrationDTO() {
     }
 
     public SchoolRegistrationDTO(String name, String adminEmail, String adminPassword, String adminPhone, String address,
-                                 String city, String state, String postalCode, UUID subscriptionPlanId) {
+                                 String city, String state, String postalCode, String logoUrl, UUID subscriptionPlanId) {
         this.name = name;
         this.adminEmail = adminEmail;
         this.adminPassword = adminPassword;
@@ -30,6 +31,7 @@ public class SchoolRegistrationDTO {
         this.city = city;
         this.state = state;
         this.postalCode = postalCode;
+        this.logoUrl = logoUrl;
         this.subscriptionPlanId = subscriptionPlanId;
     }
 
@@ -105,6 +107,14 @@ public class SchoolRegistrationDTO {
         this.subscriptionPlanId = subscriptionPlanId;
     }
 
+    public String getLogoUrl() {
+        return logoUrl;
+    }
+
+    public void setLogoUrl(String logoUrl) {
+        this.logoUrl = logoUrl;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -118,6 +128,7 @@ public class SchoolRegistrationDTO {
         private String city;
         private String state;
         private String postalCode;
+        private String logoUrl;
         private UUID subscriptionPlanId;
 
         private Builder() {
@@ -163,13 +174,18 @@ public class SchoolRegistrationDTO {
             return this;
         }
 
+        public Builder logoUrl(String logoUrl) {
+            this.logoUrl = logoUrl;
+            return this;
+        }
+
         public Builder subscriptionPlanId(UUID subscriptionPlanId) {
             this.subscriptionPlanId = subscriptionPlanId;
             return this;
         }
 
         public SchoolRegistrationDTO build() {
-            return new SchoolRegistrationDTO(name, adminEmail, adminPassword, adminPhone, address, city, state, postalCode, subscriptionPlanId);
+            return new SchoolRegistrationDTO(name, adminEmail, adminPassword, adminPhone, address, city, state, postalCode, logoUrl, subscriptionPlanId);
         }
     }
 }

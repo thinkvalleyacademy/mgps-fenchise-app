@@ -90,6 +90,7 @@ class SchoolServiceTest {
             .city("Bangalore")
             .state("Karnataka")
             .postalCode("560001")
+            .logoUrl("data:image/png;base64,test")
             .subscriptionPlanId(subscriptionPlan.getId())
             .build();
         
@@ -103,6 +104,7 @@ class SchoolServiceTest {
             .city(registrationDTO.getCity())
             .state(registrationDTO.getState())
             .postalCode(registrationDTO.getPostalCode())
+            .logoUrl(registrationDTO.getLogoUrl())
             .subscriptionPlan(subscriptionPlan)
             .status(SchoolStatus.ACTIVE)
             .databaseName("school_testdb_db")
@@ -186,6 +188,7 @@ class SchoolServiceTest {
             .city("Bangalore")
             .state("Karnataka")
             .postalCode("560002")
+            .logoUrl("data:image/png;base64,test")
             .build();
 
         SubscriptionPlan freePlan = SubscriptionPlan.builder()

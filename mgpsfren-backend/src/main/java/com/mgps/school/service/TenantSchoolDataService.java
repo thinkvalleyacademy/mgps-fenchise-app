@@ -42,8 +42,8 @@ public class TenantSchoolDataService {
                 INSERT INTO tenant_school_snapshot (
                     school_id, school_name, admin_email, admin_phone, city, state, postal_code,
                     status, database_name, subscription_plan_id, subscription_plan_name,
-                    max_students, max_staff, max_users, monthly_price, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    max_students, max_staff, max_users, monthly_price, logo_url, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT (school_id) DO UPDATE SET
                     school_name = EXCLUDED.school_name,
                     admin_email = EXCLUDED.admin_email,
@@ -59,6 +59,7 @@ public class TenantSchoolDataService {
                     max_staff = EXCLUDED.max_staff,
                     max_users = EXCLUDED.max_users,
                     monthly_price = EXCLUDED.monthly_price,
+                    logo_url = EXCLUDED.logo_url,
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 school.getId(), school.getName(), school.getAdminEmail(), school.getAdminPhone(),
@@ -66,7 +67,7 @@ public class TenantSchoolDataService {
                 school.getDatabaseName(), plan != null ? plan.getId() : null,
                 plan != null ? plan.getPlanName() : null, plan != null ? plan.getMaxStudents() : null,
                 plan != null ? plan.getMaxStaff() : null, plan != null ? plan.getMaxUsers() : null,
-                plan != null ? plan.getMonthlyPrice() : null);
+                plan != null ? plan.getMonthlyPrice() : null, school.getLogoUrl());
         });
     }
 
@@ -77,7 +78,7 @@ public class TenantSchoolDataService {
             TenantSchoolSnapshot snapshot = jdbcTemplate.queryForObject("""
                 SELECT school_id, school_name, admin_email, admin_phone, city, state, postal_code,
                        status, database_name, subscription_plan_id, subscription_plan_name,
-                       max_students, max_staff, max_users, monthly_price
+                       max_students, max_staff, max_users, monthly_price, logo_url
                 FROM tenant_school_snapshot
                 WHERE school_id = ?
                 """, (rs, rowNum) -> new TenantSchoolSnapshot(
@@ -95,7 +96,8 @@ public class TenantSchoolDataService {
                     (Integer) rs.getObject("max_students"),
                     (Integer) rs.getObject("max_staff"),
                     (Integer) rs.getObject("max_users"),
-                    rs.getBigDecimal("monthly_price")
+                    rs.getBigDecimal("monthly_price"),
+                    rs.getString("logo_url")
                 ), school.getId());
 
             List<UserProfile> users = appUserRepository.findBySchoolId(school.getId(), PageRequest.of(0, 200))
@@ -137,6 +139,7 @@ public class TenantSchoolDataService {
                 max_staff INTEGER,
                 max_users INTEGER,
                 monthly_price DECIMAL(10, 2),
+                logo_url TEXT,
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             """);
@@ -164,7 +167,8 @@ public class TenantSchoolDataService {
         Integer maxStudents,
         Integer maxStaff,
         Integer maxUsers,
-        java.math.BigDecimal monthlyPrice
+        java.math.BigDecimal monthlyPrice,
+        String logoUrl
     ) {
     }
 }

@@ -555,6 +555,7 @@ export default function App() {
                     city: selectedSchool.city ?? '',
                     state: selectedSchool.state ?? '',
                     postalCode: '',
+                    logoUrl: selectedSchool.logoUrl ?? '',
                     subscriptionPlanId: selectedSchool.subscriptionPlan?.planId ?? plans[0].planId
                   }}
                   onSubmit={handleEditSchool}

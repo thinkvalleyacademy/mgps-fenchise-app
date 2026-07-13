@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS tenant_school_snapshot (
     max_staff INTEGER,
     max_users INTEGER,
     monthly_price DECIMAL(10, 2),
+    logo_url TEXT,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

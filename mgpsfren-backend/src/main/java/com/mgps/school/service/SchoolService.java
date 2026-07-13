@@ -78,6 +78,10 @@ public class SchoolService {
             log.warn("Attempt to register school with existing email: {}", dto.getAdminEmail());
             throw new DuplicateResourceException("School with this email already exists");
         }
+
+        if (dto.getLogoUrl() == null || dto.getLogoUrl().isBlank()) {
+            throw new IllegalArgumentException("School logo is required");
+        }
         
         // Verify subscription plan exists
         UUID planId = dto.getSubscriptionPlanId();
@@ -107,6 +111,7 @@ public class SchoolService {
             .city(dto.getCity())
             .state(dto.getState())
             .postalCode(dto.getPostalCode())
+            .logoUrl(dto.getLogoUrl())
             .subscriptionPlan(plan)
             .status(SchoolStatus.ACTIVE)
             .build();

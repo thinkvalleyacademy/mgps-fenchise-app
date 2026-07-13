@@ -50,7 +50,7 @@ public class School {
     @Column(length = 10)
     private String postalCode;
 
-    @Column(length = 255)
+    @Column(name = "logo_url", columnDefinition = "TEXT")
     private String logoUrl;
 
     @Column(nullable = false, unique = true, length = 100)

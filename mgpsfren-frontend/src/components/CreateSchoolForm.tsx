@@ -37,10 +37,37 @@ export default function CreateSchoolForm({ initial, plans, submitting, submitLab
     setForm((cur) => ({ ...cur, [key]: value }));
   }
 
+  function handleLogoChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setErrors((cur) => ({ ...cur, logoUrl: 'Please upload a valid image file' }));
+      return;
+    }
+
+    if (file.size > 750 * 1024) {
+      setErrors((cur) => ({ ...cur, logoUrl: 'Logo must be 750 KB or smaller' }));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateField('logoUrl', String(reader.result));
+      setErrors((cur) => {
+        const next = { ...cur };
+        delete next.logoUrl;
+        return next;
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
   function validate(): boolean {
     const e: Record<string, string> = {};
     if (!form.name || String(form.name).trim() === '') e.name = 'School name is required';
     if (!form.adminEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(form.adminEmail))) e.adminEmail = 'A valid admin email is required';
+    if (!form.logoUrl || String(form.logoUrl).trim() === '') e.logoUrl = 'School logo is required';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -89,6 +116,15 @@ export default function CreateSchoolForm({ initial, plans, submitting, submitLab
         <label>
           Postal code
           <input value={form.postalCode ?? ''} onChange={(e) => updateField('postalCode', e.target.value)} placeholder="411001" />
+        </label>
+
+        <label className="full">
+          School logo
+          <input type="file" accept="image/*" onChange={handleLogoChange} />
+          {form.logoUrl ? (
+            <img src={form.logoUrl} alt="School logo preview" style={{ width: 72, height: 72, objectFit: 'contain', marginTop: 10, borderRadius: 8, background: 'rgba(255,255,255,0.06)', padding: 6 }} />
+          ) : null}
+          {errors.logoUrl ? <small className="error">{errors.logoUrl}</small> : null}
         </label>
 
         <label className="full">

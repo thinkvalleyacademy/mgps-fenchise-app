@@ -11,6 +11,8 @@ public class FeePaymentDTO {
     private String studentName;
     private String admissionNumber;
     private String feeCategoryName;
+    private String schoolName;
+    private String schoolLogoUrl;
     private BigDecimal amountPaid;
     private LocalDateTime paymentDate;
     private String paymentMode;
@@ -70,6 +72,22 @@ public class FeePaymentDTO {
 
     public void setFeeCategoryName(String feeCategoryName) {
         this.feeCategoryName = feeCategoryName;
+    }
+
+    public String getSchoolName() {
+        return schoolName;
+    }
+
+    public void setSchoolName(String schoolName) {
+        this.schoolName = schoolName;
+    }
+
+    public String getSchoolLogoUrl() {
+        return schoolLogoUrl;
+    }
+
+    public void setSchoolLogoUrl(String schoolLogoUrl) {
+        this.schoolLogoUrl = schoolLogoUrl;
     }
 
     public BigDecimal getAmountPaid() {
