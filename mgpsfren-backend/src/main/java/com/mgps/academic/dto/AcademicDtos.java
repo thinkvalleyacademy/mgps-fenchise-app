@@ -155,6 +155,28 @@ public final class AcademicDtos {
         public void setGradeLevel(String gradeLevel) { this.gradeLevel = gradeLevel; }
     }
 
+    public static class AcademicSubjectOption {
+        private String name;
+        private String code;
+        private String subjectType;
+
+        public AcademicSubjectOption() {
+        }
+
+        public AcademicSubjectOption(String name, String code, String subjectType) {
+            this.name = name;
+            this.code = code;
+            this.subjectType = subjectType;
+        }
+
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getCode() { return code; }
+        public void setCode(String code) { this.code = code; }
+        public String getSubjectType() { return subjectType; }
+        public void setSubjectType(String subjectType) { this.subjectType = subjectType; }
+    }
+
     public static class AcademicSectionRequest {
         private UUID schoolId;
         private UUID classId;

@@ -209,6 +209,10 @@ export async function fetchSubjects(classId: string): Promise<any[]> {
   return request(`/academic/subjects?classId=${classId}`);
 }
 
+export async function fetchSubjectOptions(): Promise<any[]> {
+  return request('/academic/subjects/options');
+}
+
 export async function createSubject(payload: any): Promise<any> {
   return request('/academic/subjects', { method: 'POST', body: JSON.stringify(payload) });
 }

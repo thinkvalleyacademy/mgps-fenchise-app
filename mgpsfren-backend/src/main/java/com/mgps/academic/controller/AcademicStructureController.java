@@ -104,6 +104,12 @@ public class AcademicStructureController {
         return ResponseEntity.ok(ApiResponse.success(academicStructureService.getSubjects(classId), "Subjects retrieved successfully"));
     }
 
+    @GetMapping("/subjects/options")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<?>> getSubjectOptions() {
+        return ResponseEntity.ok(ApiResponse.success(academicStructureService.getDefaultSubjectOptions(), "Subject options retrieved successfully"));
+    }
+
     @PostMapping("/departments")
     @PreAuthorize("hasAuthority('ACADEMIC_MANAGE')")
     public ResponseEntity<ApiResponse<?>> createDepartment(@RequestBody AcademicDepartmentRequest request) {

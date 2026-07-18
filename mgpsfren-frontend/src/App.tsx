@@ -4,7 +4,7 @@ import LoginModule from './components/LoginModule';
 import FeeManagementModule from './components/FeeManagementModule';
 import EnquiryModule from './components/EnquiryModule';
 import { ClassScheduleModule } from './components/ClassScheduleModule';
-import { buildSchoolPreview, checkSuperAdminStatus, createSchool, createSubscriptionPlan, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, updateSchoolStatus, deleteSchool, registerUser, fetchUsers, updateUser, updateUserStatus, deleteUser, setAuthToken, fetchAcademicYears, fetchAcademicYearOptions, createAcademicYear, activateAcademicYear, fetchClasses, fetchClassOptions, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures, fetchEnquiries, fetchSchedules, createSchedule, updateSchedule, deleteSchedule, duplicateSchedule } from './api';
+import { buildSchoolPreview, checkSuperAdminStatus, createSchool, createSubscriptionPlan, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, updateSchoolStatus, deleteSchool, registerUser, fetchUsers, updateUser, updateUserStatus, deleteUser, setAuthToken, fetchAcademicYears, fetchAcademicYearOptions, createAcademicYear, activateAcademicYear, fetchClasses, fetchClassOptions, createClass, fetchSections, createSection, fetchSubjects, fetchSubjectOptions, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures, fetchEnquiries, fetchSchedules, createSchedule, updateSchedule, deleteSchedule, duplicateSchedule } from './api';
 import type {
   AuthProfile,
   SchoolRegistrationPayload,
@@ -2155,12 +2155,14 @@ function SectionManagementModule({ schoolId }: { schoolId: string }) {
 function SubjectManagementModule({ schoolId }: { schoolId: string }) {
   const [classes, setClasses] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [subjectOptions, setSubjectOptions] = useState<any[]>([]);
   const [selectedClassId, setSelectedClassId] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', code: '', subjectType: 'CORE' });
 
   useEffect(() => {
     fetchClasses(schoolId).then(setClasses);
+    fetchSubjectOptions().then(setSubjectOptions).catch(() => setSubjectOptions([]));
   }, [schoolId]);
 
   useEffect(() => {
@@ -2181,6 +2183,15 @@ function SubjectManagementModule({ schoolId }: { schoolId: string }) {
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to create subject');
     }
+  }
+
+  function applySubjectOption(code: string) {
+    const option = subjectOptions.find(item => item.code === code);
+    if (!option) {
+      setForm({ name: '', code: '', subjectType: 'CORE' });
+      return;
+    }
+    setForm({ name: option.name, code: option.code, subjectType: option.subjectType || 'CORE' });
   }
 
   return (
@@ -2204,6 +2215,12 @@ function SubjectManagementModule({ schoolId }: { schoolId: string }) {
       {showForm && (
         <form onSubmit={handleSubmit} className="card-form-wrap" style={{ marginBottom: 20 }}>
           <div className="form-grid">
+            <label>Subject Preset
+              <select value={subjectOptions.some(option => option.code === form.code) ? form.code : ''} onChange={e => applySubjectOption(e.target.value)}>
+                <option value="">Custom Subject</option>
+                {subjectOptions.map(option => <option key={option.code} value={option.code}>{option.name}</option>)}
+              </select>
+            </label>
             <label>Subject Name <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Mathematics" required /></label>
             <label>Subject Code <input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="MATH10" required /></label>
             <label>Type 

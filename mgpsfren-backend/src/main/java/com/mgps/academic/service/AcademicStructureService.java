@@ -12,8 +12,6 @@ import java.util.List;
 import java.util.UUID;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,6 +35,14 @@ public class AcademicStructureService {
         new AcademicClassOption("Class 8", "C8", "8"),
         new AcademicClassOption("Class 9", "C9", "9"),
         new AcademicClassOption("Class 10", "C10", "10")
+    );
+    private static final List<AcademicSubjectOption> DEFAULT_SUBJECT_OPTIONS = List.of(
+        new AcademicSubjectOption("Hindi", "HIN", "CORE"),
+        new AcademicSubjectOption("English", "ENG", "CORE"),
+        new AcademicSubjectOption("Maths", "MATH", "CORE"),
+        new AcademicSubjectOption("EVS", "EVS", "CORE"),
+        new AcademicSubjectOption("Drawing", "DRAW", "CORE"),
+        new AcademicSubjectOption("Play", "PLAY", "CORE")
     );
 
     private final AcademicYearRepository academicYearRepository;
@@ -97,82 +103,8 @@ public class AcademicStructureService {
         return DEFAULT_CLASS_OPTIONS;
     }
 
-    public void seedDefaultAcademicSetup(UUID schoolId) {
-        if (schoolId == null) {
-            throw new BusinessLogicException("School ID is required");
-        }
-
-        List<AcademicYear> years = seedDefaultSessions(schoolId);
-        for (AcademicYear year : years) {
-            seedDefaultClasses(schoolId, year.getId());
-        }
-    }
-
-    private List<AcademicYear> seedDefaultSessions(UUID schoolId) {
-        Map<String, AcademicYear> yearsByName = academicYearRepository.findBySchoolId(schoolId)
-            .stream()
-            .filter(year -> year.getName() != null && !year.getName().isBlank())
-            .collect(Collectors.toMap(
-                AcademicYear::getName,
-                year -> year,
-                (existing, duplicate) -> existing,
-                LinkedHashMap::new
-            ));
-
-        boolean hasActiveYear = yearsByName.values().stream()
-            .anyMatch(year -> Boolean.TRUE.equals(year.getIsActive()));
-        List<AcademicYear> defaultYears = new ArrayList<>();
-        List<AcademicSessionOption> options = getDefaultSessionOptions();
-        for (int index = 0; index < options.size(); index++) {
-            AcademicSessionOption option = options.get(index);
-            if (yearsByName.containsKey(option.getName())) {
-                defaultYears.add(yearsByName.get(option.getName()));
-                continue;
-            }
-            AcademicYear year = new AcademicYear(
-                UUID.randomUUID(),
-                schoolId,
-                option.getName(),
-                option.getStartDate(),
-                option.getEndDate(),
-                !hasActiveYear && index == 0,
-                null,
-                null
-            );
-            AcademicYear saved = academicYearRepository.save(year);
-            yearsByName.put(saved.getName(), saved);
-            defaultYears.add(saved);
-            hasActiveYear = hasActiveYear || Boolean.TRUE.equals(saved.getIsActive());
-        }
-        return defaultYears;
-    }
-
-    private void seedDefaultClasses(UUID schoolId, UUID academicYearId) {
-        List<String> existingCodes = academicClassRepository.findBySchoolIdAndAcademicYearId(schoolId, academicYearId)
-            .stream()
-            .map(AcademicClass::getCode)
-            .filter(code -> code != null && !code.isBlank())
-            .map(String::toUpperCase)
-            .toList();
-
-        for (AcademicClassOption option : DEFAULT_CLASS_OPTIONS) {
-            if (existingCodes.contains(option.getCode().toUpperCase())) {
-                continue;
-            }
-            AcademicClass academicClass = new AcademicClass(
-                UUID.randomUUID(),
-                schoolId,
-                academicYearId,
-                option.getName(),
-                option.getGradeLevel(),
-                option.getCode(),
-                "Default class created during tenant onboarding",
-                true,
-                null,
-                null
-            );
-            academicClassRepository.save(academicClass);
-        }
+    public List<AcademicSubjectOption> getDefaultSubjectOptions() {
+        return DEFAULT_SUBJECT_OPTIONS;
     }
 
     public List<AcademicYearResponse> getAcademicYears(UUID schoolId) {

@@ -1,6 +1,5 @@
 package com.mgps.school.service;
 
-import com.mgps.academic.service.AcademicStructureService;
 import com.mgps.audit.ActivityLogService;
 import com.mgps.school.entity.School;
 import com.mgps.school.entity.SubscriptionPlan;
@@ -23,18 +22,15 @@ public class TenantSchoolDataService {
     private final JdbcTemplate jdbcTemplate;
     private final AppUserRepository appUserRepository;
     private final ActivityLogService activityLogService;
-    private final AcademicStructureService academicStructureService;
 
     public TenantSchoolDataService(TenantExecutionService tenantExecutionService,
                                    JdbcTemplate jdbcTemplate,
                                    AppUserRepository appUserRepository,
-                                   ActivityLogService activityLogService,
-                                   AcademicStructureService academicStructureService) {
+                                   ActivityLogService activityLogService) {
         this.tenantExecutionService = tenantExecutionService;
         this.jdbcTemplate = jdbcTemplate;
         this.appUserRepository = appUserRepository;
         this.activityLogService = activityLogService;
-        this.academicStructureService = academicStructureService;
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -123,11 +119,6 @@ public class TenantSchoolDataService {
                 .getContent();
             return new TenantSchoolOverview(snapshot, getDashboardCounts(school.getId()), users, activityLogService.findRecent(100));
         });
-    }
-
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public void seedDefaultAcademicSetup(School school) {
-        tenantExecutionService.inTenant(school, () -> academicStructureService.seedDefaultAcademicSetup(school.getId()));
     }
 
     private TenantDashboardCounts getDashboardCounts(UUID schoolId) {
