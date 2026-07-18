@@ -8,6 +8,7 @@ import com.mgps.tenant.TenantNamingUtil;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.exception.FlywayValidateException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
@@ -209,7 +210,7 @@ public class DatabaseProvisioningService {
                 .baselineOnMigrate(true)
                 .load();
 
-            int appliedMigrations = flyway.migrate().migrationsExecuted;
+            int appliedMigrations = migrateTenantWithRepair(flyway, databaseName);
             log.info("Applied {} Flyway migrations to tenant database: {}", appliedMigrations, databaseName);
         } catch (Exception e) {
             log.error("Failed to initialize tenant schema for database: {}", databaseName, e);
@@ -218,6 +219,18 @@ public class DatabaseProvisioningService {
             if (tenantDataSource != null) {
                 tenantDataSource.close();
             }
+        }
+    }
+
+    private int migrateTenantWithRepair(Flyway flyway, String databaseName) {
+        try {
+            return flyway.migrate().migrationsExecuted;
+        } catch (FlywayValidateException ex) {
+            log.warn(
+                "Tenant database {} has Flyway validation differences. Repairing schema history before retrying migration.",
+                databaseName);
+            flyway.repair();
+            return flyway.migrate().migrationsExecuted;
         }
     }
 
