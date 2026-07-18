@@ -211,4 +211,26 @@ class TenantIdentifierImplTest {
 
         assertThat(tenantIdentifier.resolveTenant(request)).isNull();
     }
+
+    @Test
+    @DisplayName("Should keep school management endpoints on the master datasource")
+    void testSchoolManagementDoesNotUseDeploymentSubdomainOrHeader() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/schools");
+        request.setServerName("mgpsfren.thinkvalleysoftwares.in");
+        request.addHeader("X-Tenant-Id", "mgpsfren");
+
+        assertThat(tenantIdentifier.resolveTenant(request)).isNull();
+    }
+
+    @Test
+    @DisplayName("Should keep subscription plan endpoints on the master datasource")
+    void testSubscriptionPlansDoNotUseDeploymentSubdomainOrHeader() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/subscription-plans");
+        request.setServerName("mgpsfren.thinkvalleysoftwares.in");
+        request.addHeader("X-Tenant-Id", "mgpsfren");
+
+        assertThat(tenantIdentifier.resolveTenant(request)).isNull();
+    }
 }

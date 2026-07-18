@@ -35,7 +35,7 @@ public class TenantIdentifierImpl implements TenantIdentifier {
         String requestUri = request.getRequestURI();
 
         // Global public endpoints must never inherit tenant context from host/header.
-        if (requestUri.endsWith("/auth/login") || requestUri.contains("/setup/")) {
+        if (isMasterEndpoint(requestUri)) {
             return null;
         }
 
@@ -69,6 +69,23 @@ public class TenantIdentifierImpl implements TenantIdentifier {
         }
         
         return null;
+    }
+
+    private boolean isMasterEndpoint(String requestUri) {
+        if (requestUri == null) {
+            return false;
+        }
+
+        String path = requestUri.startsWith("/api/")
+            ? requestUri.substring("/api".length())
+            : requestUri;
+
+        return path.endsWith("/auth/login")
+            || path.contains("/setup/")
+            || path.equals("/schools")
+            || path.startsWith("/schools/")
+            || path.equals("/subscription-plans")
+            || path.startsWith("/subscription-plans/");
     }
     
     /**
