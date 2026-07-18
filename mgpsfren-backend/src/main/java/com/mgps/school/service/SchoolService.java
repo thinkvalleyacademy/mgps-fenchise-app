@@ -144,6 +144,7 @@ public class SchoolService {
         try {
             databaseProvisioningService.registerDataSource(routingDataSource, savedSchool);
             tenantSchoolDataService.synchronizeSnapshot(savedSchool);
+            tenantSchoolDataService.seedDefaultAcademicSetup(savedSchool);
             log.info("Datasource registered for school: {}", schoolId);
         } catch (Exception e) {
             log.error("Failed to register datasource for school", e);

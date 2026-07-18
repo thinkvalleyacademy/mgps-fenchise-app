@@ -8,7 +8,8 @@ import type {
   AuthResponse,
   AuthProfile,
   TenantSchoolOverview,
-  Enquiry
+  Enquiry,
+  SchoolStatus
 } from './types';
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:8080/api';
@@ -126,6 +127,13 @@ export async function updateSchool(schoolId: string, payload: Partial<SchoolRegi
   });
 }
 
+export async function updateSchoolStatus(schoolId: string, status: SchoolStatus): Promise<SchoolSummary> {
+  return request(`/schools/${schoolId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status })
+  });
+}
+
 export async function deleteSchool(schoolId: string): Promise<void> {
   return request(`/schools/${schoolId}`, {
     method: 'DELETE'
@@ -164,6 +172,10 @@ export async function fetchAcademicYears(schoolId: string): Promise<any[]> {
   return request(`/academic/years?schoolId=${schoolId}`);
 }
 
+export async function fetchAcademicYearOptions(): Promise<any[]> {
+  return request('/academic/years/options');
+}
+
 export async function createAcademicYear(payload: any): Promise<any> {
   return request('/academic/years', { method: 'POST', body: JSON.stringify(payload) });
 }
@@ -175,6 +187,10 @@ export async function activateAcademicYear(yearId: string, schoolId: string): Pr
 export async function fetchClasses(schoolId: string, academicYearId?: string): Promise<any[]> {
   const query = academicYearId ? `&academicYearId=${academicYearId}` : '';
   return request(`/academic/classes?schoolId=${schoolId}${query}`);
+}
+
+export async function fetchClassOptions(): Promise<any[]> {
+  return request('/academic/classes/options');
 }
 
 export async function createClass(payload: any): Promise<any> {

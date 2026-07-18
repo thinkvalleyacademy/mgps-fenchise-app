@@ -10,11 +10,34 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional
 public class AcademicStructureService {
+
+    private static final int DEFAULT_SESSION_START_YEAR = 2025;
+    private static final int DEFAULT_SESSION_COUNT = 10;
+    private static final List<AcademicClassOption> DEFAULT_CLASS_OPTIONS = List.of(
+        new AcademicClassOption("Playgroup", "PG", "PLAYGROUP"),
+        new AcademicClassOption("Nursery", "NUR", "NURSERY"),
+        new AcademicClassOption("LKG", "LKG", "LKG"),
+        new AcademicClassOption("UKG", "UKG", "UKG"),
+        new AcademicClassOption("Class 1", "C1", "1"),
+        new AcademicClassOption("Class 2", "C2", "2"),
+        new AcademicClassOption("Class 3", "C3", "3"),
+        new AcademicClassOption("Class 4", "C4", "4"),
+        new AcademicClassOption("Class 5", "C5", "5"),
+        new AcademicClassOption("Class 6", "C6", "6"),
+        new AcademicClassOption("Class 7", "C7", "7"),
+        new AcademicClassOption("Class 8", "C8", "8"),
+        new AcademicClassOption("Class 9", "C9", "9"),
+        new AcademicClassOption("Class 10", "C10", "10")
+    );
 
     private final AcademicYearRepository academicYearRepository;
     private final AcademicClassRepository academicClassRepository;
@@ -56,6 +79,100 @@ public class AcademicStructureService {
         );
         AcademicYear saved = academicYearRepository.save(year);
         return mapYear(saved);
+    }
+
+    public List<AcademicSessionOption> getDefaultSessionOptions() {
+        List<AcademicSessionOption> options = new ArrayList<>();
+        for (int year = DEFAULT_SESSION_START_YEAR; year < DEFAULT_SESSION_START_YEAR + DEFAULT_SESSION_COUNT; year++) {
+            options.add(new AcademicSessionOption(
+                year + "-" + String.format("%02d", (year + 1) % 100),
+                LocalDate.of(year, 4, 1),
+                LocalDate.of(year + 1, 3, 31)
+            ));
+        }
+        return options;
+    }
+
+    public List<AcademicClassOption> getDefaultClassOptions() {
+        return DEFAULT_CLASS_OPTIONS;
+    }
+
+    public void seedDefaultAcademicSetup(UUID schoolId) {
+        if (schoolId == null) {
+            throw new BusinessLogicException("School ID is required");
+        }
+
+        List<AcademicYear> years = seedDefaultSessions(schoolId);
+        for (AcademicYear year : years) {
+            seedDefaultClasses(schoolId, year.getId());
+        }
+    }
+
+    private List<AcademicYear> seedDefaultSessions(UUID schoolId) {
+        Map<String, AcademicYear> yearsByName = academicYearRepository.findBySchoolId(schoolId)
+            .stream()
+            .filter(year -> year.getName() != null && !year.getName().isBlank())
+            .collect(Collectors.toMap(
+                AcademicYear::getName,
+                year -> year,
+                (existing, duplicate) -> existing,
+                LinkedHashMap::new
+            ));
+
+        boolean hasActiveYear = yearsByName.values().stream()
+            .anyMatch(year -> Boolean.TRUE.equals(year.getIsActive()));
+        List<AcademicYear> defaultYears = new ArrayList<>();
+        List<AcademicSessionOption> options = getDefaultSessionOptions();
+        for (int index = 0; index < options.size(); index++) {
+            AcademicSessionOption option = options.get(index);
+            if (yearsByName.containsKey(option.getName())) {
+                defaultYears.add(yearsByName.get(option.getName()));
+                continue;
+            }
+            AcademicYear year = new AcademicYear(
+                UUID.randomUUID(),
+                schoolId,
+                option.getName(),
+                option.getStartDate(),
+                option.getEndDate(),
+                !hasActiveYear && index == 0,
+                null,
+                null
+            );
+            AcademicYear saved = academicYearRepository.save(year);
+            yearsByName.put(saved.getName(), saved);
+            defaultYears.add(saved);
+            hasActiveYear = hasActiveYear || Boolean.TRUE.equals(saved.getIsActive());
+        }
+        return defaultYears;
+    }
+
+    private void seedDefaultClasses(UUID schoolId, UUID academicYearId) {
+        List<String> existingCodes = academicClassRepository.findBySchoolIdAndAcademicYearId(schoolId, academicYearId)
+            .stream()
+            .map(AcademicClass::getCode)
+            .filter(code -> code != null && !code.isBlank())
+            .map(String::toUpperCase)
+            .toList();
+
+        for (AcademicClassOption option : DEFAULT_CLASS_OPTIONS) {
+            if (existingCodes.contains(option.getCode().toUpperCase())) {
+                continue;
+            }
+            AcademicClass academicClass = new AcademicClass(
+                UUID.randomUUID(),
+                schoolId,
+                academicYearId,
+                option.getName(),
+                option.getGradeLevel(),
+                option.getCode(),
+                "Default class created during tenant onboarding",
+                true,
+                null,
+                null
+            );
+            academicClassRepository.save(academicClass);
+        }
     }
 
     public List<AcademicYearResponse> getAcademicYears(UUID schoolId) {

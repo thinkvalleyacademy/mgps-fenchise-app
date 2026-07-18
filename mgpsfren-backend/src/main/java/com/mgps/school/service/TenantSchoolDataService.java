@@ -1,5 +1,6 @@
 package com.mgps.school.service;
 
+import com.mgps.academic.service.AcademicStructureService;
 import com.mgps.audit.ActivityLogService;
 import com.mgps.school.entity.School;
 import com.mgps.school.entity.SubscriptionPlan;
@@ -22,15 +23,18 @@ public class TenantSchoolDataService {
     private final JdbcTemplate jdbcTemplate;
     private final AppUserRepository appUserRepository;
     private final ActivityLogService activityLogService;
+    private final AcademicStructureService academicStructureService;
 
     public TenantSchoolDataService(TenantExecutionService tenantExecutionService,
                                    JdbcTemplate jdbcTemplate,
                                    AppUserRepository appUserRepository,
-                                   ActivityLogService activityLogService) {
+                                   ActivityLogService activityLogService,
+                                   AcademicStructureService academicStructureService) {
         this.tenantExecutionService = tenantExecutionService;
         this.jdbcTemplate = jdbcTemplate;
         this.appUserRepository = appUserRepository;
         this.activityLogService = activityLogService;
+        this.academicStructureService = academicStructureService;
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -117,8 +121,62 @@ public class TenantSchoolDataService {
                     return profile;
                 })
                 .getContent();
-            return new TenantSchoolOverview(snapshot, users, activityLogService.findRecent(100));
+            return new TenantSchoolOverview(snapshot, getDashboardCounts(school.getId()), users, activityLogService.findRecent(100));
         });
+    }
+
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void seedDefaultAcademicSetup(School school) {
+        tenantExecutionService.inTenant(school, () -> academicStructureService.seedDefaultAcademicSetup(school.getId()));
+    }
+
+    private TenantDashboardCounts getDashboardCounts(UUID schoolId) {
+        long students = count("students", "school_id", schoolId);
+        long staff = count("staff_members", "school_id", schoolId);
+        long users = count("app_users", "school_id", schoolId);
+        long classes = count("academic_classes", "school_id", schoolId);
+        long sessions = count("academic_years", "school_id", schoolId);
+        long studentAttendanceRecords = count("student_attendance_records");
+        long staffAttendanceRecords = count("staff_attendance_records");
+        long attendancePopulation = students + staff;
+        long attendedPeople = countDistinctAttendedPeople();
+        double attendanceCoveragePercent = attendancePopulation == 0
+            ? 0
+            : Math.round((attendedPeople * 10000.0) / attendancePopulation) / 100.0;
+
+        return new TenantDashboardCounts(
+            students,
+            staff,
+            users,
+            classes,
+            sessions,
+            studentAttendanceRecords,
+            staffAttendanceRecords,
+            attendanceCoveragePercent
+        );
+    }
+
+    private long count(String tableName) {
+        Long value = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + tableName, Long.class);
+        return value != null ? value : 0;
+    }
+
+    private long count(String tableName, String schoolColumn, UUID schoolId) {
+        Long value = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM " + tableName + " WHERE " + schoolColumn + " = ? OR " + schoolColumn + " IS NULL",
+            Long.class,
+            schoolId
+        );
+        return value != null ? value : 0;
+    }
+
+    private long countDistinctAttendedPeople() {
+        Long value = jdbcTemplate.queryForObject("""
+            SELECT
+                (SELECT COUNT(DISTINCT student_id) FROM student_attendance_records) +
+                (SELECT COUNT(DISTINCT staff_id) FROM staff_attendance_records)
+            """, Long.class);
+        return value != null ? value : 0;
     }
 
     private void ensureSnapshotTable() {
@@ -147,6 +205,7 @@ public class TenantSchoolDataService {
 
     public record TenantSchoolOverview(
         TenantSchoolSnapshot school,
+        TenantDashboardCounts dashboard,
         List<UserProfile> users,
         List<ActivityLogService.ActivityLogRecord> activity
     ) {
@@ -169,6 +228,18 @@ public class TenantSchoolDataService {
         Integer maxUsers,
         java.math.BigDecimal monthlyPrice,
         String logoUrl
+    ) {
+    }
+
+    public record TenantDashboardCounts(
+        long students,
+        long staff,
+        long users,
+        long classes,
+        long sessions,
+        long studentAttendanceRecords,
+        long staffAttendanceRecords,
+        double attendanceCoveragePercent
     ) {
     }
 }

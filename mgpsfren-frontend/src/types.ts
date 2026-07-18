@@ -112,6 +112,16 @@ export interface TenantSchoolOverview {
     maxUsers?: number;
     monthlyPrice?: number;
   };
+  dashboard?: {
+    students: number;
+    staff: number;
+    users: number;
+    classes: number;
+    sessions: number;
+    studentAttendanceRecords: number;
+    staffAttendanceRecords: number;
+    attendanceCoveragePercent: number;
+  };
   users: AuthProfile[];
   activity: TenantActivity[];
 }

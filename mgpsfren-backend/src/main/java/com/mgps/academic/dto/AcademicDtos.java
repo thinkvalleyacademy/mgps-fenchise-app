@@ -52,6 +52,28 @@ public final class AcademicDtos {
         public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     }
 
+    public static class AcademicSessionOption {
+        private String name;
+        private LocalDate startDate;
+        private LocalDate endDate;
+
+        public AcademicSessionOption() {
+        }
+
+        public AcademicSessionOption(String name, LocalDate startDate, LocalDate endDate) {
+            this.name = name;
+            this.startDate = startDate;
+            this.endDate = endDate;
+        }
+
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public LocalDate getStartDate() { return startDate; }
+        public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
+        public LocalDate getEndDate() { return endDate; }
+        public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
+    }
+
     public static class AcademicClassRequest {
         private UUID schoolId;
         private UUID academicYearId;
@@ -109,6 +131,28 @@ public final class AcademicDtos {
         public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
         public LocalDateTime getUpdatedAt() { return updatedAt; }
         public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    }
+
+    public static class AcademicClassOption {
+        private String name;
+        private String code;
+        private String gradeLevel;
+
+        public AcademicClassOption() {
+        }
+
+        public AcademicClassOption(String name, String code, String gradeLevel) {
+            this.name = name;
+            this.code = code;
+            this.gradeLevel = gradeLevel;
+        }
+
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getCode() { return code; }
+        public void setCode(String code) { this.code = code; }
+        public String getGradeLevel() { return gradeLevel; }
+        public void setGradeLevel(String gradeLevel) { this.gradeLevel = gradeLevel; }
     }
 
     public static class AcademicSectionRequest {

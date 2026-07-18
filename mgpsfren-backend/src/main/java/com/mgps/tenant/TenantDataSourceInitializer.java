@@ -37,6 +37,7 @@ public class TenantDataSourceInitializer implements ApplicationRunner {
                 databaseProvisioningService.migrateTenantSchema(school.getDatabaseName());
                 databaseProvisioningService.registerDataSource(routingDataSource, school);
                 tenantSchoolDataService.synchronizeSnapshot(school);
+                tenantSchoolDataService.seedDefaultAcademicSetup(school);
             } catch (RuntimeException ex) {
                 log.error("Failed to restore datasource for school {} ({})",
                     school.getName(), school.getId(), ex);

@@ -4,7 +4,7 @@ import LoginModule from './components/LoginModule';
 import FeeManagementModule from './components/FeeManagementModule';
 import EnquiryModule from './components/EnquiryModule';
 import { ClassScheduleModule } from './components/ClassScheduleModule';
-import { buildSchoolPreview, checkSuperAdminStatus, createSchool, createSubscriptionPlan, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, deleteSchool, registerUser, fetchUsers, updateUser, updateUserStatus, deleteUser, setAuthToken, fetchAcademicYears, createAcademicYear, activateAcademicYear, fetchClasses, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures, fetchEnquiries, fetchSchedules, createSchedule, updateSchedule, deleteSchedule, duplicateSchedule } from './api';
+import { buildSchoolPreview, checkSuperAdminStatus, createSchool, createSubscriptionPlan, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, updateSchoolStatus, deleteSchool, registerUser, fetchUsers, updateUser, updateUserStatus, deleteUser, setAuthToken, fetchAcademicYears, fetchAcademicYearOptions, createAcademicYear, activateAcademicYear, fetchClasses, fetchClassOptions, createClass, fetchSections, createSection, fetchSubjects, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures, fetchEnquiries, fetchSchedules, createSchedule, updateSchedule, deleteSchedule, duplicateSchedule } from './api';
 import type {
   AuthProfile,
   SchoolRegistrationPayload,
@@ -13,7 +13,8 @@ import type {
   SubscriptionPlanDraft,
   TenantSchoolOverview,
   SuperAdminSetupPayload,
-  SuperAdminStatus
+  SuperAdminStatus,
+  SchoolStatus
 } from './types';
 
 // Auth Context
@@ -262,6 +263,12 @@ export default function App() {
   useEffect(() => {
     if (selectedModule === 'User Management' && authProfile?.schoolId) {
       loadSchoolUsers(authProfile.schoolId);
+      loadTenantOverview(authProfile.schoolId);
+    }
+  }, [selectedModule, authProfile?.schoolId]);
+
+  useEffect(() => {
+    if (selectedModule === 'Dashboard' && authProfile?.schoolId) {
       loadTenantOverview(authProfile.schoolId);
     }
   }, [selectedModule, authProfile?.schoolId]);
@@ -516,9 +523,18 @@ export default function App() {
                           <td>{school.subscriptionPlan?.planName ?? 'N/A'}</td>
                           <td>{formatDate(school.createdAt)}</td>
                           <td>
-                            <div style={{ display: 'flex', gap: 4 }}>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                               <button type="button" className="secondary small" onClick={() => handleViewSchool(school.schoolId)}>View</button>
                               <button type="button" className="secondary small" onClick={() => handleInitiateEditSchool(school.schoolId)}>Edit</button>
+                              {school.status !== 'ACTIVE' && (
+                                <button type="button" className="secondary small" onClick={() => handleSchoolStatusChange(school.schoolId, 'ACTIVE')}>Activate</button>
+                              )}
+                              {school.status === 'ACTIVE' && (
+                                <button type="button" className="secondary small" onClick={() => handleSchoolStatusChange(school.schoolId, 'SUSPENDED')}>Suspend</button>
+                              )}
+                              {school.status !== 'INACTIVE' && (
+                                <button type="button" className="secondary small" onClick={() => handleSchoolStatusChange(school.schoolId, 'INACTIVE')}>Inactive</button>
+                              )}
                               <button type="button" className="secondary small error-text" onClick={() => handleDeleteSchool(school.schoolId)}>Delete</button>
                             </div>
                           </td>
@@ -576,38 +592,41 @@ export default function App() {
                 </div>
 
                 {detailTab === 'overview' && (
-                  <div className="detail-grid">
-                    <div className="detail-item">
-                      <label>School Name</label>
-                      <p>{selectedSchool.name}</p>
+                  <>
+                    <div className="detail-grid">
+                      <div className="detail-item">
+                        <label>School Name</label>
+                        <p>{selectedSchool.name}</p>
+                      </div>
+                      <div className="detail-item">
+                        <label>Status</label>
+                        <p className={`status-pill ${selectedSchool.status.toLowerCase()}`}>{selectedSchool.status}</p>
+                      </div>
+                      <div className="detail-item">
+                        <label>Admin Contact</label>
+                        <p>{selectedSchool.adminEmail}</p>
+                        <p>{selectedSchool.adminPhone}</p>
+                      </div>
+                      <div className="detail-item">
+                        <label>Location</label>
+                        <p>{selectedSchool.city}, {selectedSchool.state}</p>
+                      </div>
+                      <div className="detail-item">
+                        <label>Subscription</label>
+                        <p><strong>{selectedSchool.subscriptionPlan?.planName}</strong></p>
+                        <p>{selectedSchool.subscriptionPlan?.monthlyPrice} / month</p>
+                      </div>
+                      <div className="detail-item">
+                        <label>Database</label>
+                        <p><code>{selectedSchool.databaseName}</code></p>
+                      </div>
+                      <div className="detail-item">
+                        <label>Created Date</label>
+                        <p>{formatDate(selectedSchool.createdAt)}</p>
+                      </div>
                     </div>
-                    <div className="detail-item">
-                      <label>Status</label>
-                      <p className={`status-pill ${selectedSchool.status.toLowerCase()}`}>{selectedSchool.status}</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Admin Contact</label>
-                      <p>{selectedSchool.adminEmail}</p>
-                      <p>{selectedSchool.adminPhone}</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Location</label>
-                      <p>{selectedSchool.city}, {selectedSchool.state}</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Subscription</label>
-                      <p><strong>{selectedSchool.subscriptionPlan?.planName}</strong></p>
-                      <p>{selectedSchool.subscriptionPlan?.monthlyPrice} / month</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Database</label>
-                      <p><code>{selectedSchool.databaseName}</code></p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Created Date</label>
-                      <p>{formatDate(selectedSchool.createdAt)}</p>
-                    </div>
-                  </div>
+                    <TenantDashboardCards dashboard={tenantOverview?.dashboard} />
+                  </>
                 )}
 
                 {detailTab === 'users' && (
@@ -671,6 +690,16 @@ export default function App() {
                     <button type="button" className="primary" onClick={() => handleInitiateEditSchool(selectedSchool.schoolId)}>
                       Edit School
                     </button>
+                    {selectedSchool.status !== 'ACTIVE' && (
+                      <button type="button" className="secondary" onClick={() => handleSchoolStatusChange(selectedSchool.schoolId, 'ACTIVE')}>
+                        Activate
+                      </button>
+                    )}
+                    {selectedSchool.status === 'ACTIVE' && (
+                      <button type="button" className="secondary" onClick={() => handleSchoolStatusChange(selectedSchool.schoolId, 'SUSPENDED')}>
+                        Suspend
+                      </button>
+                    )}
                     <button type="button" className="secondary" onClick={() => setSchoolView('list')}>
                       Back to List
                     </button>
@@ -685,6 +714,21 @@ export default function App() {
         );
 
       case 'Dashboard':
+        if (authProfile?.schoolId) {
+          return (
+            <section className="module-panel">
+              <div className="module-header">
+                <div>
+                  <p className="section-label">Dashboard</p>
+                  <h2>Tenant activity and operational counts</h2>
+                </div>
+                <span className="badge">{tenantOverview?.school.schoolName ?? 'Tenant'}</span>
+              </div>
+              <TenantDashboardCards dashboard={tenantOverview?.dashboard} />
+            </section>
+          );
+        }
+
         return (
           <section className="module-panel">
             <div className="module-header">
@@ -1015,6 +1059,21 @@ export default function App() {
       setSchools(refreshed);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to delete school');
+    }
+  }
+
+  async function handleSchoolStatusChange(schoolId: string, status: SchoolStatus) {
+    setError(null);
+    try {
+      const updated = await updateSchoolStatus(schoolId, status);
+      setSchools((current) => current.map((school) => (
+        school.schoolId === schoolId ? { ...school, ...updated } : school
+      )));
+      if (selectedSchoolId === schoolId) {
+        loadTenantOverview(schoolId);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update school status');
     }
   }
 
@@ -1399,6 +1458,56 @@ export default function App() {
   );
 }
 
+function TenantDashboardCards({ dashboard }: { dashboard?: TenantSchoolOverview['dashboard'] }) {
+  if (!dashboard) {
+    return (
+      <div className="empty-state">
+        <strong>Loading tenant dashboard</strong>
+        <p>Counts will appear after the tenant database responds.</p>
+      </div>
+    );
+  }
+
+  const attendanceRecords = dashboard.studentAttendanceRecords + dashboard.staffAttendanceRecords;
+
+  return (
+    <>
+      <div className="module-card-grid" style={{ marginTop: 18 }}>
+        <article className="module-card">
+          <h4>Students</h4>
+          <p>{dashboard.students.toLocaleString('en-IN')} enrolled student records.</p>
+        </article>
+        <article className="module-card">
+          <h4>Staff</h4>
+          <p>{dashboard.staff.toLocaleString('en-IN')} staff profiles in this tenant.</p>
+        </article>
+        <article className="module-card">
+          <h4>Users</h4>
+          <p>{dashboard.users.toLocaleString('en-IN')} application user accounts.</p>
+        </article>
+        <article className="module-card">
+          <h4>Attendance coverage</h4>
+          <p>{dashboard.attendanceCoveragePercent.toFixed(2)}% with at least one attendance record.</p>
+        </article>
+      </div>
+      <div className="module-card-grid" style={{ marginTop: 18 }}>
+        <article className="module-card">
+          <h4>Classes</h4>
+          <p>{dashboard.classes.toLocaleString('en-IN')} configured class records.</p>
+        </article>
+        <article className="module-card">
+          <h4>Sessions</h4>
+          <p>{dashboard.sessions.toLocaleString('en-IN')} academic sessions available.</p>
+        </article>
+        <article className="module-card">
+          <h4>Attendance records</h4>
+          <p>{attendanceRecords.toLocaleString('en-IN')} student and staff entries.</p>
+        </article>
+      </div>
+    </>
+  );
+}
+
 function StudentManagementModule({ schoolId }: { schoolId: string }) {
   const [students, setStudents] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -1776,13 +1885,24 @@ function StaffManagementModule({ schoolId }: { schoolId: string }) {
 
 function AcademicSessionModule({ schoolId }: { schoolId: string }) {
   const [sessions, setSessions] = useState<any[]>([]);
+  const [sessionOptions, setSessionOptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', startDate: '', endDate: '' });
 
   useEffect(() => {
     fetchAcademicYears(schoolId).then(setSessions).finally(() => setLoading(false));
+    fetchAcademicYearOptions().then(setSessionOptions).catch(() => setSessionOptions([]));
   }, [schoolId]);
+
+  function applySessionOption(optionName: string) {
+    const option = sessionOptions.find(item => item.name === optionName);
+    if (!option) {
+      setForm({ name: '', startDate: '', endDate: '' });
+      return;
+    }
+    setForm({ name: option.name, startDate: option.startDate, endDate: option.endDate });
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -1818,6 +1938,12 @@ function AcademicSessionModule({ schoolId }: { schoolId: string }) {
       {showForm && (
         <form onSubmit={handleSubmit} className="card-form-wrap" style={{ marginBottom: 20 }}>
           <div className="form-grid">
+            <label>Default Session
+              <select value={sessionOptions.some(option => option.name === form.name) ? form.name : ''} onChange={e => applySessionOption(e.target.value)}>
+                <option value="">Custom Session</option>
+                {sessionOptions.map(option => <option key={option.name} value={option.name}>{option.name}</option>)}
+              </select>
+            </label>
             <label>Session Name <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="2026-27" required /></label>
             <label>Start Date <input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} required /></label>
             <label>End Date <input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} required /></label>
@@ -1858,20 +1984,31 @@ function AcademicSessionModule({ schoolId }: { schoolId: string }) {
 
 function ClassManagementModule({ schoolId }: { schoolId: string }) {
   const [classes, setClasses] = useState<any[]>([]);
+  const [classOptions, setClassOptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', code: '' });
+  const [form, setForm] = useState({ name: '', code: '', gradeLevel: '' });
 
   useEffect(() => {
     fetchClasses(schoolId).then(setClasses).finally(() => setLoading(false));
+    fetchClassOptions().then(setClassOptions).catch(() => setClassOptions([]));
   }, [schoolId]);
+
+  function applyClassOption(code: string) {
+    const option = classOptions.find(item => item.code === code);
+    if (!option) {
+      setForm({ name: '', code: '', gradeLevel: '' });
+      return;
+    }
+    setForm({ name: option.name, code: option.code, gradeLevel: option.gradeLevel });
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
       await createClass({ ...form, schoolId });
       setShowForm(false);
-      setForm({ name: '', code: '' });
+      setForm({ name: '', code: '', gradeLevel: '' });
       fetchClasses(schoolId).then(setClasses);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to create class');
@@ -1891,8 +2028,15 @@ function ClassManagementModule({ schoolId }: { schoolId: string }) {
       {showForm && (
         <form onSubmit={handleSubmit} className="card-form-wrap" style={{ marginBottom: 20 }}>
           <div className="form-grid">
-            <label>Class Name <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Grade 10" required /></label>
+            <label>Class Preset
+              <select value={classOptions.some(option => option.code === form.code) ? form.code : ''} onChange={e => applyClassOption(e.target.value)}>
+                <option value="">Custom Class</option>
+                {classOptions.map(option => <option key={option.code} value={option.code}>{option.name}</option>)}
+              </select>
+            </label>
+            <label>Class Name <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Class 10" required /></label>
             <label>Class Code <input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="G10" required /></label>
+            <label>Grade Level <input value={form.gradeLevel} onChange={e => setForm({ ...form, gradeLevel: e.target.value })} placeholder="10" /></label>
           </div>
           <button type="submit" className="primary" style={{ marginTop: 12 }}>Save Class</button>
         </form>

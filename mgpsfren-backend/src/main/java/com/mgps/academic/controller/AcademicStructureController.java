@@ -33,6 +33,12 @@ public class AcademicStructureController {
         return ResponseEntity.ok(ApiResponse.success(academicStructureService.getAcademicYears(schoolId), "Academic years retrieved successfully"));
     }
 
+    @GetMapping("/years/options")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<?>> getAcademicYearOptions() {
+        return ResponseEntity.ok(ApiResponse.success(academicStructureService.getDefaultSessionOptions(), "Academic session options retrieved successfully"));
+    }
+
     @PatchMapping("/years/{yearId}/activate")
     @PreAuthorize("hasAuthority('ACADEMIC_MANAGE')")
     public ResponseEntity<ApiResponse<?>> activateAcademicYear(@PathVariable UUID yearId, @RequestParam UUID schoolId) {
@@ -51,6 +57,12 @@ public class AcademicStructureController {
     public ResponseEntity<ApiResponse<?>> getClasses(@RequestParam UUID schoolId,
                                                      @RequestParam(required = false) UUID academicYearId) {
         return ResponseEntity.ok(ApiResponse.success(academicStructureService.getAcademicClasses(schoolId, academicYearId), "Classes retrieved successfully"));
+    }
+
+    @GetMapping("/classes/options")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<?>> getClassOptions() {
+        return ResponseEntity.ok(ApiResponse.success(academicStructureService.getDefaultClassOptions(), "Class options retrieved successfully"));
     }
 
     @PostMapping("/sections")
