@@ -17,6 +17,7 @@ import com.mgps.user.dto.UserDtos.UserStatusRequest;
 import com.mgps.user.dto.UserDtos.UserUpdateRequest;
 import com.mgps.school.repository.SchoolRepository;
 import com.mgps.tenant.TenantExecutionService;
+import com.mgps.tenant.TenantGuard;
 import com.mgps.tenant.TenantNamingUtil;
 import com.mgps.user.entity.AppUser;
 import com.mgps.user.entity.UserRole;
@@ -54,21 +55,23 @@ public class UserService {
     private final SchoolRepository schoolRepository;
     private final TenantExecutionService tenantExecutionService;
     private final ActivityLogService activityLogService;
+    private final TenantGuard tenantGuard;
 
     public UserService() {
-        this(null, null, null, null, null, null, null);
+        this(null, null, null, null, null, null, null, null);
     }
 
     public UserService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
                        TokenRevocationService tokenRevocationService) {
-        this(appUserRepository, passwordEncoder, jwtService, tokenRevocationService, null, null, null);
+        this(appUserRepository, passwordEncoder, jwtService, tokenRevocationService, null, null, null, null);
     }
 
     @Autowired
     public UserService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
                        TokenRevocationService tokenRevocationService, SchoolRepository schoolRepository,
                        TenantExecutionService tenantExecutionService,
-                       ActivityLogService activityLogService) {
+                       ActivityLogService activityLogService,
+                       TenantGuard tenantGuard) {
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -76,6 +79,9 @@ public class UserService {
         this.schoolRepository = schoolRepository;
         this.tenantExecutionService = tenantExecutionService;
         this.activityLogService = activityLogService;
+        // TenantGuard is stateless; never leave it null or the cross-tenant checks
+        // below would silently become no-ops.
+        this.tenantGuard = tenantGuard != null ? tenantGuard : new TenantGuard();
     }
 
     public AuthResponse registerUser(RegisterUserRequest request) {
@@ -86,6 +92,9 @@ public class UserService {
         if (request.getSchoolId() == null) {
             saved = createUser(request);
         } else {
+            // Without this, any principal holding USER_CREATE could provision a
+            // user (of any role) inside another school's database.
+            tenantGuard.assertSchoolAccessible(request.getSchoolId());
             saved = createUserInTenant(request);
         }
 
@@ -264,10 +273,24 @@ public class UserService {
         }
 
         String email = jwtService.extractEmail(refreshToken);
-        AppUser user = appUserRepository.findByEmail(email)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        String tenantId = jwtService.extractTenantId(refreshToken);
 
-        return buildAuthResponse(user);
+        // The refresh token itself names the tenant it was issued for. Resolving
+        // the user against the ambient request context instead would let a token
+        // from school A be exchanged for a session in school B whenever the same
+        // email exists in both databases.
+        if (tenantId == null || tenantId.isBlank()) {
+            return tenantExecutionService.inMaster(() -> buildAuthResponse(loadUserByEmail(email)));
+        }
+
+        School school = tenantExecutionService.inMaster(() -> schoolRepository.findById(UUID.fromString(tenantId)))
+            .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+        return tenantExecutionService.inTenant(school, () -> buildAuthResponse(loadUserByEmail(email)));
+    }
+
+    private AppUser loadUserByEmail(String email) {
+        return appUserRepository.findByEmail(email)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     public void logout(LogoutRequest request) {
@@ -302,6 +325,7 @@ public class UserService {
     }
 
     public Page<UserProfile> getUsersBySchool(UUID schoolId, Pageable pageable) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         School school = tenantExecutionService.inMaster(() -> schoolRepository.findById(schoolId))
             .orElseThrow(() -> new ResourceNotFoundException("School not found"));
         return tenantExecutionService.inTenant(
@@ -338,6 +362,7 @@ public class UserService {
             return updateCurrentDataSourceStatus(userId, request);
         }
 
+        tenantGuard.assertSchoolAccessible(request.getSchoolId());
         School school = tenantExecutionService.inMaster(() -> schoolRepository.findById(request.getSchoolId()))
             .orElseThrow(() -> new ResourceNotFoundException("School not found"));
         tenantExecutionService.inMaster(() -> updateCurrentDataSourceStatus(userId, request));
@@ -356,6 +381,7 @@ public class UserService {
             return updateCurrentDataSourceUser(userId, request);
         }
 
+        tenantGuard.assertSchoolAccessible(request.getSchoolId());
         School school = tenantExecutionService.inMaster(() -> schoolRepository.findById(request.getSchoolId()))
             .orElseThrow(() -> new ResourceNotFoundException("School not found"));
         tenantExecutionService.inMaster(() -> updateCurrentDataSourceUser(userId, request));
@@ -383,6 +409,7 @@ public class UserService {
             return;
         }
 
+        tenantGuard.assertSchoolAccessible(schoolId);
         School school = tenantExecutionService.inMaster(() -> schoolRepository.findById(schoolId))
             .orElseThrow(() -> new ResourceNotFoundException("School not found"));
         tenantExecutionService.inTenant(school, () -> deleteCurrentDataSourceUser(userId));
@@ -490,6 +517,8 @@ public class UserService {
             UUID schoolId = columns[0].isBlank()
                 ? defaultSchoolId
                 : UUID.fromString(columns[0].trim());
+            // A CSV row must not be able to stamp a foreign school id onto a user.
+            tenantGuard.assertSchoolAccessible(schoolId);
             String firstName = columns[1].trim();
             String lastName = columns[2].trim();
             String email = columns[3].trim().toLowerCase();

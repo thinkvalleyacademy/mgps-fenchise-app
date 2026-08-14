@@ -2,6 +2,8 @@ package com.mgps.fee.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -48,6 +50,16 @@ public class FeeStructure {
 
     @Column(name = "recurrence_type", length = 20)
     private String recurrenceType = "ONE_TIME";
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fine_type", length = 20, nullable = false)
+    private FineType fineType = FineType.NONE;
+
+    @Column(name = "fine_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal fineAmount = BigDecimal.ZERO;
+
+    @Column(name = "grace_period_days", nullable = false)
+    private Integer gracePeriodDays = 0;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -138,6 +150,30 @@ public class FeeStructure {
 
     public void setRecurrenceType(String recurrenceType) {
         this.recurrenceType = recurrenceType;
+    }
+
+    public FineType getFineType() {
+        return fineType;
+    }
+
+    public void setFineType(FineType fineType) {
+        this.fineType = fineType;
+    }
+
+    public BigDecimal getFineAmount() {
+        return fineAmount;
+    }
+
+    public void setFineAmount(BigDecimal fineAmount) {
+        this.fineAmount = fineAmount;
+    }
+
+    public Integer getGracePeriodDays() {
+        return gracePeriodDays;
+    }
+
+    public void setGracePeriodDays(Integer gracePeriodDays) {
+        this.gracePeriodDays = gracePeriodDays;
     }
 
     public LocalDateTime getCreatedAt() {

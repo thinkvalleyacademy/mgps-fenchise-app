@@ -9,11 +9,13 @@ import com.mgps.academic.repository.AcademicYearRepository;
 import com.mgps.common.exception.ResourceNotFoundException;
 import com.mgps.fee.entity.FeeStructure;
 import com.mgps.fee.service.FeeService;
+import com.mgps.tenant.TenantGuard;
 import com.mgps.student.dto.StudentDtos.*;
 import com.mgps.student.entity.*;
 import com.mgps.student.repository.StudentDocumentRepository;
 import com.mgps.student.repository.StudentAttendanceRepository;
 import com.mgps.student.repository.StudentRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -36,6 +38,7 @@ public class StudentService {
     private final AcademicClassRepository academicClassRepository;
     private final AcademicSectionRepository academicSectionRepository;
     private final FeeService feeService;
+    private final TenantGuard tenantGuard;
 
     public StudentService(StudentRepository studentRepository,
                           StudentDocumentRepository documentRepository,
@@ -44,6 +47,19 @@ public class StudentService {
                           AcademicClassRepository academicClassRepository,
                           AcademicSectionRepository academicSectionRepository,
                           FeeService feeService) {
+        this(studentRepository, documentRepository, attendanceRepository, academicYearRepository,
+            academicClassRepository, academicSectionRepository, feeService, null);
+    }
+
+    @Autowired
+    public StudentService(StudentRepository studentRepository,
+                          StudentDocumentRepository documentRepository,
+                          StudentAttendanceRepository attendanceRepository,
+                          AcademicYearRepository academicYearRepository,
+                          AcademicClassRepository academicClassRepository,
+                          AcademicSectionRepository academicSectionRepository,
+                          FeeService feeService,
+                          TenantGuard tenantGuard) {
         this.studentRepository = studentRepository;
         this.documentRepository = documentRepository;
         this.attendanceRepository = attendanceRepository;
@@ -51,9 +67,11 @@ public class StudentService {
         this.academicClassRepository = academicClassRepository;
         this.academicSectionRepository = academicSectionRepository;
         this.feeService = feeService;
+        this.tenantGuard = tenantGuard != null ? tenantGuard : new TenantGuard();
     }
 
     public StudentResponse admitStudent(StudentAdmissionRequest request) {
+        tenantGuard.assertSchoolAccessible(request.getSchoolId());
         UUID yearId = request.getAcademicYearId();
         if (yearId == null) {
             yearId = academicYearRepository.findBySchoolIdAndIsActiveTrue(request.getSchoolId())
@@ -126,10 +144,12 @@ public class StudentService {
     }
 
     public Page<StudentResponse> getStudentsBySchool(UUID schoolId, Pageable pageable) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         return studentRepository.findBySchoolId(schoolId, pageable).map(this::map);
     }
 
     public List<StudentResponse> getStudentsByClass(UUID schoolId, UUID classId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         return studentRepository.findBySchoolIdAndClassId(schoolId, classId).stream().map(this::map).collect(Collectors.toList());
     }
 

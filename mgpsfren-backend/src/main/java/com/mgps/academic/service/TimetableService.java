@@ -7,6 +7,8 @@ import com.mgps.academic.entity.TimetableEntry;
 import com.mgps.academic.repository.TimetableEntryRepository;
 import com.mgps.common.exception.BusinessLogicException;
 import com.mgps.common.exception.ResourceNotFoundException;
+import com.mgps.tenant.TenantGuard;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,9 +23,16 @@ import java.util.stream.Collectors;
 public class TimetableService {
 
     private final TimetableEntryRepository timetableEntryRepository;
+    private final TenantGuard tenantGuard;
 
     public TimetableService(TimetableEntryRepository timetableEntryRepository) {
+        this(timetableEntryRepository, null);
+    }
+
+    @Autowired
+    public TimetableService(TimetableEntryRepository timetableEntryRepository, TenantGuard tenantGuard) {
         this.timetableEntryRepository = timetableEntryRepository;
+        this.tenantGuard = tenantGuard != null ? tenantGuard : new TenantGuard();
     }
 
     public TimetableResponse createTimetableEntry(TimetableRequest request) {
@@ -79,16 +88,19 @@ public class TimetableService {
     }
 
     public List<TimetableResponse> getTimetableForClass(UUID schoolId, UUID academicYearId, UUID classId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         return timetableEntryRepository.findBySchoolIdAndAcademicYearIdAndClassId(schoolId, academicYearId, classId)
             .stream().map(this::map).collect(Collectors.toList());
     }
 
     public List<TimetableResponse> getTimetableForDay(UUID schoolId, UUID academicYearId, String dayOfWeek) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         return timetableEntryRepository.findBySchoolIdAndAcademicYearIdAndDayOfWeek(schoolId, academicYearId, normalizeDay(dayOfWeek))
             .stream().map(this::map).collect(Collectors.toList());
     }
 
     public List<TimetableResponse> getWeeklySchedule(UUID schoolId, UUID academicYearId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         return timetableEntryRepository.findBySchoolIdAndAcademicYearId(schoolId, academicYearId)
             .stream().map(this::map).collect(Collectors.toList());
     }
@@ -102,6 +114,7 @@ public class TimetableService {
             request.getDayOfWeek() == null || request.getStartTime() == null || request.getEndTime() == null) {
             throw new ResourceNotFoundException("Missing timetable fields");
         }
+        tenantGuard.assertSchoolAccessible(request.getSchoolId());
         if (!request.getStartTime().isBefore(request.getEndTime())) {
             throw new BusinessLogicException("Start time must be before end time");
         }

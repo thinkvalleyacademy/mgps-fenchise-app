@@ -4,6 +4,8 @@ import com.mgps.common.dto.ApiResponse;
 import com.mgps.school.dto.*;
 import com.mgps.school.entity.SchoolStatus;
 import com.mgps.school.service.DomainMappingService;
+import com.mgps.tenant.TenantGuard;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.mgps.school.service.SchoolService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -36,12 +38,16 @@ public class SchoolController {
     
     @Autowired
     private DomainMappingService domainMappingService;
+
+    @Autowired
+    private TenantGuard tenantGuard;
     
     /**
      * Register a new school
      * POST /api/schools
      */
     @PostMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<?>> createSchool(@RequestBody SchoolRegistrationDTO dto) {
         log.info("Received request to create school: {}", dto.getName());
         
@@ -58,14 +64,16 @@ public class SchoolController {
     @GetMapping("/{schoolId}")
     public ResponseEntity<ApiResponse<?>> getSchool(@PathVariable UUID schoolId) {
         log.info("Fetching school: {}", schoolId);
-        
+
+        tenantGuard.assertSchoolAccessible(schoolId);
         SchoolDTO school = schoolService.getSchoolById(schoolId);
-        
+
         return ResponseEntity.ok(ApiResponse.success(school, "School retrieved successfully"));
     }
 
     @GetMapping("/{schoolId}/tenant-overview")
     public ResponseEntity<ApiResponse<?>> getTenantOverview(@PathVariable UUID schoolId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         return ResponseEntity.ok(ApiResponse.success(
             schoolService.getTenantOverview(schoolId),
             "Tenant school information retrieved successfully"));
@@ -76,6 +84,7 @@ public class SchoolController {
      * GET /api/schools?page=0&size=20
      */
     @GetMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<?>> getAllSchools(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -100,6 +109,7 @@ public class SchoolController {
      * PUT /api/schools/{schoolId}
      */
     @PutMapping("/{schoolId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<?>> updateSchool(
             @PathVariable UUID schoolId,
             @RequestBody SchoolUpdateDTO dto) {
@@ -116,6 +126,7 @@ public class SchoolController {
      * PATCH /api/schools/{schoolId}/status
      */
     @PatchMapping("/{schoolId}/status")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<?>> changeSchoolStatus(
             @PathVariable UUID schoolId,
             @RequestBody SchoolStatusDTO dto) {
@@ -134,6 +145,8 @@ public class SchoolController {
     @GetMapping("/{schoolId}/domains")
     public ResponseEntity<ApiResponse<?>> getSchoolDomains(@PathVariable UUID schoolId) {
         log.info("Fetching domains for school: {}", schoolId);
+
+        tenantGuard.assertSchoolAccessible(schoolId);
         
         List<SchoolDomainDTO> domains = domainMappingService.getSchoolDomains(schoolId);
         
@@ -145,6 +158,7 @@ public class SchoolController {
      * POST /api/schools/{schoolId}/domains
      */
     @PostMapping("/{schoolId}/domains")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<?>> addDomain(
             @PathVariable UUID schoolId,
             @RequestBody SchoolDomainRequestDTO dto) {
