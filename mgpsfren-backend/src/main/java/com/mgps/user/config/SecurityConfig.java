@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -42,27 +43,23 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // Truly public: health probes, the credential endpoints themselves,
+                // first-run superadmin bootstrap, and the public enquiry form.
                 .requestMatchers(
                     "/health/**",
-                    "/tenant/**",
-                    "/setup/**",
-                    "/auth/register",
+                    "/actuator/health",
+                    "/actuator/info"
+                ).permitAll()
+                .requestMatchers(
                     "/auth/login",
                     "/auth/refresh",
-                    "/auth/logout",
-                    "/auth/**"
+                    "/auth/logout"
                 ).permitAll()
-                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                .requestMatchers(
-                    "/schools",
-                    "/schools/**",
-                    "/subscription-plans",
-                    "/subscription-plans/**",
-                    "/users",
-                    "/users/**",
-                    "/enquiries",
-                    "/enquiries/**"
-                ).permitAll()  // Public endpoints for testing
+                .requestMatchers("/setup/superadmin").permitAll()
+                .requestMatchers(HttpMethod.POST, "/enquiries").permitAll()
+                // Everything else requires a token. The previous permitAll block
+                // ("public endpoints for testing") exposed every school, user and
+                // enquiry across all tenants to unauthenticated callers.
                 .anyRequest().authenticated()
             )
             .addFilterBefore(corsDebugFilter(), UsernamePasswordAuthenticationFilter.class)

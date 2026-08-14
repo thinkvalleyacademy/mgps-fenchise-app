@@ -17,6 +17,7 @@ public class StudentFeeDTO {
     private LocalDate dueDate;
     private BigDecimal discountAmount;
     private String discountReason;
+    private BigDecimal fineAccrued;
     private String recurrenceType; // ONE_TIME, MONTHLY
     private BigDecimal totalDueTillDate; // Calculated based on elapsed months for monthly
     private BigDecimal outstandingBalance;
@@ -121,6 +122,14 @@ public class StudentFeeDTO {
 
     public void setDiscountReason(String discountReason) {
         this.discountReason = discountReason;
+    }
+
+    public BigDecimal getFineAccrued() {
+        return fineAccrued;
+    }
+
+    public void setFineAccrued(BigDecimal fineAccrued) {
+        this.fineAccrued = fineAccrued;
     }
 
     public String getRecurrenceType() {

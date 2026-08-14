@@ -33,6 +33,9 @@ public class RolePermissionService {
             UserPermission.ACADEMIC_MANAGE,
             UserPermission.STUDENT_MANAGE,
             UserPermission.STAFF_MANAGE,
+            UserPermission.FEE_MANAGE,
+            UserPermission.EXAM_MANAGE,
+            UserPermission.COMMUNICATION_MANAGE,
             UserPermission.PERMISSION_VIEW,
             UserPermission.AUTH_REFRESH_TOKEN,
             UserPermission.AUTH_LOGOUT
@@ -45,6 +48,9 @@ public class RolePermissionService {
             UserPermission.ACADEMIC_MANAGE,
             UserPermission.STUDENT_MANAGE,
             UserPermission.STAFF_MANAGE,
+            UserPermission.FEE_MANAGE,
+            UserPermission.EXAM_MANAGE,
+            UserPermission.COMMUNICATION_MANAGE,
             UserPermission.PERMISSION_VIEW,
             UserPermission.AUTH_REFRESH_TOKEN,
             UserPermission.AUTH_LOGOUT
@@ -54,6 +60,8 @@ public class RolePermissionService {
             UserPermission.ACADEMIC_MANAGE,
             UserPermission.STUDENT_MANAGE,
             UserPermission.STAFF_MANAGE,
+            UserPermission.EXAM_MANAGE,
+            UserPermission.COMMUNICATION_MANAGE,
             UserPermission.PERMISSION_VIEW,
             UserPermission.AUTH_REFRESH_TOKEN,
             UserPermission.AUTH_LOGOUT
@@ -74,6 +82,7 @@ public class RolePermissionService {
             UserPermission.USER_READ,
             UserPermission.ACADEMIC_MANAGE,
             UserPermission.STAFF_MANAGE,
+            UserPermission.FEE_MANAGE,
             UserPermission.PERMISSION_VIEW,
             UserPermission.AUTH_REFRESH_TOKEN,
             UserPermission.AUTH_LOGOUT

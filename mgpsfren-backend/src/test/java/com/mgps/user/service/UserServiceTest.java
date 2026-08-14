@@ -183,7 +183,7 @@ class UserServiceTest {
             .id(UUID.randomUUID())
             .email("admin@example.com")
             .passwordHash(passwordEncoder.encode("Password123!"))
-            .role(UserRole.SUPER_ADMIN)
+            .role(UserRole.SUPER_ADMIN) 
             .status(UserStatus.ACTIVE)
             .build();
 

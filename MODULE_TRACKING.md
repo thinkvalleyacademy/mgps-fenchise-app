@@ -20,16 +20,25 @@
   - CORS configuration ✅
   - Test dependencies configured ✅
   
-- � Multi-Tenant Architecture
+- 🟢 Multi-Tenant Architecture
   - Tenant context holder ✅
   - Dynamic datasource routing ✅
   - Tenant identification logic ✅
   - Schema/database switching ✅
   - Tenant resolution filter ✅
   - Datasource registry ✅
-  - 29 unit tests (all passing) ✅
-  - Production verified ✅
   - Tenant schema migration ✅
+  - **Security correction (2026-08-13)**: this entry previously claimed "production verified" tenant
+    isolation. A review found the tenant resolver trusted the client-supplied `X-Tenant-Id` header and
+    subdomain even for authenticated requests, and most data-surface endpoints (`/schools`, `/users`,
+    `/enquiries`, etc.) were `permitAll()`  — together an unauthenticated caller could read/write any
+    school's data. Fixed same day: tenant identity is now derived only from the signed JWT for
+    authenticated requests, `permitAll` was cut down to the genuinely public endpoints, and a
+    `TenantGuard` was added and wired into every service method that accepts a client-supplied
+    `schoolId` (Student, Staff, Academic Structure, Timetable, Fee, Examination, Communication), since
+    routing alone doesn't authorize a caller-chosen school. See `docs/architecture.md` for the current
+    tenant-resolution rules. **Unverified**: no JDK/Maven was available in the environment that made
+    these changes, so none of this has been compiled or test-run — run `mvn test` before relying on it.
 
 ### Module: School Onboarding (4.1)
 - 🟢 School Registration API
@@ -189,32 +198,38 @@
   - Subject-wise analysis
 
 ### Module: Attendance (4.9)
-- ⬜ Student Attendance
-  - Daily attendance marking
-  - Biometric integration support
-  - Attendance percentage reports
-  
-- ⬜ Staff Attendance
-  - Staff check-in/check-out
-  - Late marking
-  - Absent marking
+- 🟢 Student Attendance (implemented under Module 4.5, not here — tracking doc was wrong)
+  - Daily attendance marking ✅
+  - Attendance percentage reports ✅
+  - Biometric integration support ⬜ (not implemented)
+
+- 🟢 Staff Attendance (fully implemented — was previously marked ⬜ in error; verified 2026-08-13)
+  - Staff check-in/check-out via daily marking + summary ✅
+  - Leave application, approval, rejection ✅
+  - Absent marking ✅
+  - Late marking ⬜ (no explicit late-arrival concept, only PRESENT/ABSENT/LEAVE-style status)
+
+### Module: Examination (4.8)
+- 🟡 Backend implemented 2026-08-13 (`com.mgps.examination`), no frontend UI yet
+  - Exam creation, listing, status lifecycle (SCHEDULED/COMPLETED/CANCELLED) ✅
+  - Exam schedule (subject/date/time/room/marks) with same-exam conflict detection ✅
+  - Marks entry (bulk, with absence tracking + validation), per-schedule retrieval ✅
+  - Result aggregation: per-student total/percentage/grade, ranked class results, subject-wise analysis ✅
+  - Grade bands are fixed percentage cutoffs, not a configurable grade-scale entity (documented simplification)
+  - Room-conflict detection is scoped to schedules within the same exam only, not across different exams sharing a room
+
+### Module: Fee Management (4.7) — fine calculation
+- 🟢 Fine/penalty calculation implemented 2026-08-13
+  - Per-fee-structure fine config: NONE / FLAT / PERCENTAGE_PER_MONTH, with a grace period ✅
+  - Applies to one-time fees only — monthly recurring fees have no single due date in the current data model ✅ (documented simplification)
+  - Folded into outstanding balance and status calculation; not yet reflected in the school/class/student-wise aggregate reports (follow-up)
 
 ### Module: Communication (4.10)
-- ⬜ SMS Integration
-  - SMS notification service
-  - SMS templates
-  
-- ⬜ Email Notifications
-  - Email notification service
-  - HTML email templates
-  
-- ⬜ Push Notifications
-  - Push notification service
-  
-- ⬜ Parent Communication
-  - Announcement board
-  - Parent-teacher communication
-  - Progress reports to parents
+- 🟡 Backend implemented 2026-08-13 (`com.mgps.communication`), no frontend UI yet
+  - Announcement board: school-wide or role-targeted, with optional expiry ✅
+  - In-app notification inbox, fanned out automatically when an announcement posts ✅
+  - `NotificationChannel` extension point for Email/SMS/push — not implemented (no provider dependency or credentials available to build/verify against)
+  - Class-targeted announcements are stored but not resolved to individual recipient notifications (AppUser has no class membership) — frontend must filter by `classId`
 
 ---
 
@@ -305,12 +320,23 @@
 ## Development Notes
 
 ### Current Status
-- **Date**: 29 May 2026
+- **Date**: 29 May 2026 (test figures below are from this date; see 2026-08-13 update)
 - **Phase**: PHASE 1 COMPLETE ✅
-- **Test Coverage**: 76/76 PASSING (100%)
+- **Test Coverage**: 76/76 PASSING (100%) as of 29 May 2026 — **not re-verified since**
 - **Database**: PostgreSQL 15 Operational
-- **Build Status**: SUCCESS ✅
+- **Build Status**: SUCCESS ✅ as of 29 May 2026
 - **Next Task**: Phase 2 Development or Frontend Integration
+
+### 2026-08-13 update
+Multi-tenant hardening (see the Core Infrastructure entry above) and Phase 2 backend work landed:
+Examination module (new), Communication module (new: announcements + in-app notifications), Fee
+Management fine/penalty calculation, and `TenantGuard` authorization wired across Student, Staff,
+Academic Structure, Timetable and Fee. Staff Attendance was found already fully implemented (this
+file previously marked it ⬜ in error). **None of this has been compiled or run** — the environment
+had no JDK/Maven available. Before trusting the 76/76 figure above or shipping any of today's
+changes: run `mvn -DskipTests compile`, then `mvn test`, then start the app against real Postgres
+and provision a tenant to confirm the new Flyway migrations (`db/migration/tenant/V4`–`V6`) apply
+cleanly.
 
 ### Important Links
 - Requirements: `mgpsfren-backend/MGPS-requirement-doc.md`

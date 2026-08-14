@@ -3,8 +3,8 @@ package com.mgps.user.service;
 import com.mgps.user.entity.AppUser;
 import com.mgps.user.service.RolePermissionService;
 import com.mgps.user.repository.AppUserRepository;
+import com.mgps.user.security.AuthenticatedUser;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -28,15 +28,7 @@ public class AppUserDetailsService implements UserDetailsService {
         AppUser user = appUserRepository.findByEmail(username)
             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        return new User(
-            user.getEmail(),
-            user.getPasswordHash(),
-            user.getStatus() == com.mgps.user.entity.UserStatus.ACTIVE,
-            true,
-            true,
-            user.getStatus() == com.mgps.user.entity.UserStatus.ACTIVE,
-            buildAuthorities(user)
-        );
+        return new AuthenticatedUser(user, buildAuthorities(user));
     }
 
     private List<SimpleGrantedAuthority> buildAuthorities(AppUser user) {
