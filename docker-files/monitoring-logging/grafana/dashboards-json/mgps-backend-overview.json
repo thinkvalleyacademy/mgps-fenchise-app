@@ -1,0 +1,104 @@
+{
+  "id": null,
+  "uid": "mgps-backend-overview",
+  "title": "MGPS Backend Overview",
+  "tags": ["mgps"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Backend up",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [{ "expr": "up{job=\"mgps-backend\"}", "legendFormat": "up" }],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "HTTP requests/sec",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 10, "x": 4, "y": 0 },
+      "targets": [
+        { "expr": "sum(rate(http_server_requests_seconds_count{job=\"mgps-backend\"}[5m])) by (status)", "legendFormat": "status {{status}}" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Avg HTTP latency",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 10, "x": 14, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_sum{job=\"mgps-backend\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"mgps-backend\"}[5m]))",
+          "legendFormat": "avg latency (s)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "JVM heap used",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "sum(jvm_memory_used_bytes{job=\"mgps-backend\", area=\"heap\"})", "legendFormat": "heap used" },
+        { "expr": "sum(jvm_memory_max_bytes{job=\"mgps-backend\", area=\"heap\"})", "legendFormat": "heap max" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Process CPU usage",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "targets": [{ "expr": "process_cpu_usage{job=\"mgps-backend\"}", "legendFormat": "cpu" }]
+    },
+    {
+      "id": 6,
+      "title": "Host CPU usage",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "targets": [
+        {
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "legendFormat": "{{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Host memory available",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [{ "expr": "node_memory_MemAvailable_bytes", "legendFormat": "{{instance}}" }]
+    },
+    {
+      "id": 8,
+      "title": "Container memory usage",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum(container_memory_usage_bytes{name!=\"\"}) by (name)",
+          "legendFormat": "{{name}}"
+        }
+      ]
+    }
+  ]
+}

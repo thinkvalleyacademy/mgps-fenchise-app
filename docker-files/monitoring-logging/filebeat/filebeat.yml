@@ -1,0 +1,48 @@
+filebeat.inputs:
+  - type: filestream
+    id: mgps-backend-log
+    paths:
+      - /var/log/mgps/backend/*.log
+    fields:
+      application: mgps-backend
+      log_type: application
+    fields_under_root: false
+    parsers:
+      - multiline:
+          type: pattern
+          # Backend log lines start with "yyyy-MM-dd HH:mm:ss" (see
+          # logging.pattern.file in application.yml) — anything else is a
+          # continuation of the previous line (e.g. a stack trace).
+          pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+          negate: true
+          match: after
+
+  - type: filestream
+    id: mgps-nginx-access-log
+    paths:
+      - /var/log/mgps/nginx/access.log
+    fields:
+      application: mgps-proxy
+      log_type: access
+    fields_under_root: false
+
+  - type: filestream
+    id: mgps-nginx-error-log
+    paths:
+      - /var/log/mgps/nginx/error.log
+    fields:
+      application: mgps-proxy
+      log_type: error
+    fields_under_root: false
+
+# Ships to the Graylog "Beats" input (System > Inputs > Beats) on port 5044.
+# See ../graylog/init-inputs.sh to create that input automatically.
+output.logstash:
+  hosts: ["graylog:5044"]
+
+processors:
+  - add_host_metadata: ~
+
+logging.level: info
+logging.to_files: false
+logging.to_stderr: true

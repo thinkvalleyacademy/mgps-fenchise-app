@@ -1,0 +1,176 @@
+# Monitoring (Grafana + Prometheus + node-exporter + cAdvisor) and centralized
+# logging (Graylog + OpenSearch + MongoDB + Filebeat) for the mgps-fenchise-app
+# stack in docker-files/application/production.
+#
+# Nothing here touches that stack's containers or code: metrics are pulled
+# over HTTP from the backend's already-exposed actuator endpoint, and logs
+# are read from the host log directory it bind-mounts (APP_LOG_DIR) — see the
+# `- ${APP_LOG_DIR:-/var/log/mgps}/backend:/app/logs` volume added to that
+# compose file's backend/nginx-proxy services.
+#
+# Start everything:            docker compose up -d
+# Start only monitoring:       docker compose up -d grafana prometheus node-exporter cadvisor
+# Start only logging:          docker compose up -d graylog mongodb opensearch filebeat
+services:
+  # ---------------------------------------------------------------------
+  # Monitoring: Prometheus scrapes, Grafana visualizes.
+  # ---------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: mgps-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - monitoring-net
+      - mgps-shared # to reach `backend:8080` for scraping only
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: mgps-node-exporter
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    networks:
+      - monitoring-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: mgps-cadvisor
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks:
+      - monitoring-net
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: mgps-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards-json:/var/lib/grafana/dashboards-json:ro
+    networks:
+      - monitoring-net
+
+  # ---------------------------------------------------------------------
+  # Logging: Filebeat tails the host log files and ships to Graylog, which
+  # stores/indexes them in OpenSearch with metadata in MongoDB.
+  # ---------------------------------------------------------------------
+  mongodb:
+    image: mongo:6.0
+    container_name: mgps-graylog-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - monitoring-net
+
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    container_name: mgps-graylog-opensearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: "true"
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: ${OPENSEARCH_JAVA_OPTS:--Xms1g -Xmx1g}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -Eq '\"status\":\"(green|yellow)\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - monitoring-net
+
+  graylog:
+    image: graylog/graylog:5.2
+    container_name: mgps-graylog
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    environment:
+      GRAYLOG_PASSWORD_SECRET: ${GRAYLOG_PASSWORD_SECRET:?Set GRAYLOG_PASSWORD_SECRET in .env}
+      GRAYLOG_ROOT_PASSWORD_SHA2: ${GRAYLOG_ROOT_PASSWORD_SHA2:?Set GRAYLOG_ROOT_PASSWORD_SHA2 in .env}
+      GRAYLOG_HTTP_EXTERNAL_URI: ${GRAYLOG_HTTP_EXTERNAL_URI:-http://localhost:9000/}
+      GRAYLOG_MONGODB_URI: mongodb://mongodb:27017/graylog
+      GRAYLOG_ELASTICSEARCH_HOSTS: http://opensearch:9200
+    ports:
+      - "${GRAYLOG_PORT:-9000}:9000" # web UI + REST API
+      # 5044 (Beats input) and 12201 (GELF) are reached by Filebeat over the
+      # internal network only — not published to the host.
+    volumes:
+      - graylog-data:/usr/share/graylog/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/system/lbstatus"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks:
+      - monitoring-net
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat/filebeat:8.15.1
+    container_name: mgps-filebeat
+    restart: unless-stopped
+    user: root # required for filebeat to read /var/log/mgps and its own data dir
+    depends_on:
+      - graylog
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ${APP_LOG_DIR:-/var/log/mgps}:/var/log/mgps:ro
+      - filebeat-data:/usr/share/filebeat/data
+    networks:
+      - monitoring-net
+
+networks:
+  monitoring-net:
+    name: mgps-monitoring
+  mgps-shared:
+    name: mgps-shared
+    external: true
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  mongo-data:
+  opensearch-data:
+  graylog-data:
+  filebeat-data:
