@@ -2,6 +2,7 @@ package com.mgps.fee.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public class FeeStructureDTO {
@@ -9,6 +10,8 @@ public class FeeStructureDTO {
     private UUID schoolId;
     private UUID academicYearId;
     private UUID classId;
+    private List<UUID> classIds; // request-only: create the same structure for each of these classes
+    private Boolean applyToAllClasses; // request-only: create a single school-wide structure (classId = null)
     private UUID feeCategoryId;
     private String feeCategoryName;
     private BigDecimal amount;
@@ -50,6 +53,22 @@ public class FeeStructureDTO {
 
     public void setClassId(UUID classId) {
         this.classId = classId;
+    }
+
+    public List<UUID> getClassIds() {
+        return classIds;
+    }
+
+    public void setClassIds(List<UUID> classIds) {
+        this.classIds = classIds;
+    }
+
+    public Boolean getApplyToAllClasses() {
+        return applyToAllClasses;
+    }
+
+    public void setApplyToAllClasses(Boolean applyToAllClasses) {
+        this.applyToAllClasses = applyToAllClasses;
     }
 
     public UUID getFeeCategoryId() {

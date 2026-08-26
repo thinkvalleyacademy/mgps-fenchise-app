@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { jsPDF } from 'jspdf';
-import { fetchFeeCategories, createFeeCategory, fetchFeeStructures, createFeeStructure, fetchStudents, fetchStudentFees, processPayment, fetchAcademicYears, applyFeeDiscount, fetchSchoolFeeReport, fetchClassFeeReport, fetchStudentFeeReport, fetchClasses, assignFeeToStudent, fetchRecentPayments } from '../api';
-import FeeCollectionModal from './FeeCollectionModal';
+import { fetchFeeCategories, createFeeCategory, fetchFeeStructures, createFeeStructure, fetchStudents, fetchStudentFees, fetchAcademicYears, applyFeeDiscount, fetchSchoolFeeReport, fetchClassFeeReport, fetchStudentFeeReport, fetchClasses, assignFeeToStudent, fetchRecentPayments, fetchFeeSettings, updateFeeSettings } from '../api';
+import BulkFeeCollectionModal from './BulkFeeCollectionModal';
 
 interface FeeManagementModuleProps {
   schoolId: string;
@@ -43,7 +43,7 @@ function drawReceiptHeader(doc: jsPDF, payment: any) {
 }
 
 export default function FeeManagementModule({ schoolId }: FeeManagementModuleProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'categories' | 'structures' | 'collection' | 'reports'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'categories' | 'structures' | 'collection' | 'reports' | 'settings'>('dashboard');
   const [categories, setCategories] = useState<any[]>([]);
   const [structures, setStructures] = useState<any[]>([]);
   const [academicYears, setAcademicYears] = useState<any[]>([]);
@@ -54,7 +54,12 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
 
   // Form states
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
-  const [structureForm, setStructureForm] = useState({ feeCategoryId: '', amount: '', dueDate: '', classId: '', isDefault: true, recurrenceType: 'ONE_TIME' });
+  const [structureForm, setStructureForm] = useState({ feeCategoryId: '', amount: '', dueDate: '', classIds: [] as string[], applyToAllClasses: false, isDefault: true, recurrenceType: 'ONE_TIME' });
+
+  // Fee settings state
+  const [yearlyDiscountPercent, setYearlyDiscountPercent] = useState<string>('5');
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
 
   // Reporting states
   const [schoolReport, setSchoolReport] = useState<any>(null);
@@ -67,8 +72,7 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
   const [students, setStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [studentFees, setStudentFees] = useState<any[]>([]);
-  const [showCollectionModal, setShowCollectionModal] = useState(false);
-  const [collectingFee, setCollectingFee] = useState<any>(null);
+  const [showBulkCollectionModal, setShowBulkCollectionModal] = useState(false);
 
   function isAdmissionCategory(categoryName: string) {
     return categoryName.toLowerCase().includes('admission');
@@ -137,6 +141,14 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
   }, [selectedYearId, activeTab, schoolId]);
 
   useEffect(() => {
+    if (activeTab === 'settings') {
+      fetchFeeSettings(schoolId)
+        .then(settings => setYearlyDiscountPercent(String(settings.yearlyDiscountPercent ?? 5)))
+        .catch(() => setError('Failed to load fee settings'));
+    }
+  }, [activeTab, schoolId]);
+
+  useEffect(() => {
       if (selectedClassId && activeTab === 'reports') {
           fetchStudentFeeReport(selectedClassId, selectedYearId).then(setStudentReports);
       }
@@ -198,18 +210,51 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
           ? 'ONE_TIME'
           : structureForm.recurrenceType;
 
+      if (!structureForm.applyToAllClasses && structureForm.classIds.length === 0) {
+        setError('Select at least one class, or choose "Apply to all classes"');
+        return;
+      }
+
       await createFeeStructure({
-        ...structureForm,
+        feeCategoryId: structureForm.feeCategoryId,
+        isDefault: structureForm.isDefault,
         recurrenceType,
         dueDate: recurrenceType === 'MONTHLY' ? null : structureForm.dueDate,
         schoolId,
         academicYearId: selectedYearId,
-        amount: parseFloat(structureForm.amount)
+        amount: parseFloat(structureForm.amount),
+        applyToAllClasses: structureForm.applyToAllClasses,
+        classIds: structureForm.applyToAllClasses ? [] : structureForm.classIds
       });
-      setStructureForm({ feeCategoryId: '', amount: '', dueDate: '', classId: '', isDefault: true, recurrenceType: 'ONE_TIME' });
+      setStructureForm({ feeCategoryId: '', amount: '', dueDate: '', classIds: [], applyToAllClasses: false, isDefault: true, recurrenceType: 'ONE_TIME' });
       loadStructures();
     } catch (err) {
       setError('Failed to create fee structure');
+    }
+  }
+
+  function toggleStructureClass(classId: string) {
+    setStructureForm(prev => ({
+      ...prev,
+      classIds: prev.classIds.includes(classId)
+        ? prev.classIds.filter(id => id !== classId)
+        : [...prev.classIds, classId]
+    }));
+  }
+
+  async function handleSaveSettings(e: React.FormEvent) {
+    e.preventDefault();
+    setIsSavingSettings(true);
+    setSettingsMessage(null);
+    try {
+      const percent = parseFloat(yearlyDiscountPercent);
+      const saved = await updateFeeSettings(schoolId, percent);
+      setYearlyDiscountPercent(String(saved.yearlyDiscountPercent));
+      setSettingsMessage('Settings saved.');
+    } catch (err) {
+      setSettingsMessage(err instanceof Error ? err.message : 'Failed to save settings');
+    } finally {
+      setIsSavingSettings(false);
     }
   }
 
@@ -283,17 +328,12 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
       }
   }
 
-  function handleCollectClick(fee: any) {
-      setCollectingFee(fee);
-      setShowCollectionModal(true);
-  }
-
   return (
     <section className="module-panel">
       <div className="module-header">
         <div>
           <p className="section-label">Finance & Fees</p>
-          <h2>{activeTab === 'dashboard' ? 'Fee Dashboard' : activeTab === 'categories' ? 'Fee Categories' : activeTab === 'structures' ? 'Fee Structure' : activeTab === 'collection' ? 'Fee Collection' : 'Fee Reports'}</h2>
+          <h2>{activeTab === 'dashboard' ? 'Fee Dashboard' : activeTab === 'categories' ? 'Fee Categories' : activeTab === 'structures' ? 'Fee Structure' : activeTab === 'collection' ? 'Fee Collection' : activeTab === 'settings' ? 'Fee Settings' : 'Fee Reports'}</h2>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <select className="secondary small" value={selectedYearId} onChange={e => setSelectedYearId(e.target.value)}>
@@ -309,6 +349,7 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
         <button className={activeTab === 'structures' ? 'active' : ''} onClick={() => setActiveTab('structures')}>Structure</button>
         <button className={activeTab === 'collection' ? 'active' : ''} onClick={() => setActiveTab('collection')}>Collection</button>
         <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>Reports</button>
+        <button className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}>Settings</button>
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -444,17 +485,36 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                   <input type="date" value={structureForm.dueDate} onChange={e => setStructureForm({ ...structureForm, dueDate: e.target.value })} />
                 </label>
               )}
-              <label>
-                Target Class
-                <select value={structureForm.classId} onChange={e => setStructureForm({ ...structureForm, classId: e.target.value })} required>
-                  <option value="">Select Class</option>
-                  {classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
-                </select>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={structureForm.applyToAllClasses}
+                  onChange={e => setStructureForm({ ...structureForm, applyToAllClasses: e.target.checked, classIds: [] })}
+                />
+                <span>Apply to all classes</span>
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                 <input type="checkbox" checked={structureForm.isDefault} onChange={e => setStructureForm({ ...structureForm, isDefault: e.target.checked })} />
                 <span>Mark as Default (Auto-assign on admission)</span>
               </label>
+              {!structureForm.applyToAllClasses && (
+                <label className="full">
+                  Target Classes
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: '8px 0' }}>
+                    {classes.map(c => (
+                      <label key={c.classId} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: 'normal' }}>
+                        <input
+                          type="checkbox"
+                          checked={structureForm.classIds.includes(c.classId)}
+                          onChange={() => toggleStructureClass(c.classId)}
+                        />
+                        <span>{c.name}</span>
+                      </label>
+                    ))}
+                    {classes.length === 0 && <span className="hint">No classes found.</span>}
+                  </div>
+                </label>
+              )}
             </div>
             <div className="actions">
               <button type="submit" className="primary">Save Structure</button>
@@ -517,7 +577,16 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                 <div className="card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                       <h3>Fees for {selectedStudent.firstName} {selectedStudent.lastName}</h3>
-                      <button className="primary small" onClick={() => setShowAssignForm(!showAssignForm)}>{showAssignForm ? 'Cancel' : 'Assign New Fee'}</button>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="secondary small" onClick={() => setShowAssignForm(!showAssignForm)}>{showAssignForm ? 'Cancel' : 'Assign New Fee'}</button>
+                        <button
+                          className="primary small"
+                          disabled={studentFees.every(sf => (sf.outstandingBalance ?? 0) <= 0)}
+                          onClick={() => setShowBulkCollectionModal(true)}
+                        >
+                          Collect All Fees
+                        </button>
+                      </div>
                   </div>
 
                   {showAssignForm && (
@@ -550,16 +619,12 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                           <th>Paid</th>
                           <th>Balance</th>
                           <th>Status</th>
-                          <th>Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {studentFees.map(sf => {
                             const totalDue = sf.totalDueTillDate || sf.amountDue;
                             const balance = sf.outstandingBalance ?? Math.max(0, totalDue - sf.amountPaid - (sf.discountAmount || 0));
-                            const canCollect = sf.recurrenceType === 'MONTHLY'
-                              ? (sf.paidThroughMonth || 0) < (sf.totalMonthsInSession || 12)
-                              : sf.status !== 'PAID';
                             return (
                           <tr key={sf.id}>
                             <td>{sf.feeCategoryName}</td>
@@ -581,18 +646,11 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                             <td>₹{sf.amountPaid.toLocaleString()}</td>
                             <td><strong style={{ color: balance > 0 ? 'var(--danger)' : '' }}>₹{formatMoney(balance)}</strong></td>
                             <td><span className={`status-pill ${sf.status.toLowerCase()}`}>{sf.status}</span></td>
-                            <td>
-                              {canCollect && (
-                                <button className="primary small" style={{ padding: '6px 12px' }} onClick={() => handleCollectClick(sf)}>
-                                  {sf.status === 'PAID' ? 'Collect Advance' : 'Collect'}
-                                </button>
-                              )}
-                            </td>
                           </tr>
                         )})}
                         {studentFees.length === 0 && (
                           <tr>
-                            <td colSpan={9} style={{ textAlign: 'center' }}>No fees assigned to this student.</td>
+                            <td colSpan={8} style={{ textAlign: 'center' }}>No fees assigned to this student.</td>
                           </tr>
                         )}
                       </tbody>
@@ -622,12 +680,13 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                     </div>
                 )}
 
-                {showCollectionModal && collectingFee && (
-                    <FeeCollectionModal
+                {showBulkCollectionModal && (
+                    <BulkFeeCollectionModal
                         student={selectedStudent}
-                        fee={collectingFee}
+                        studentFees={studentFees}
                         schoolId={schoolId}
-                        onClose={() => { setShowCollectionModal(false); setCollectingFee(null); }}
+                        academicYearId={selectedYearId}
+                        onClose={() => setShowBulkCollectionModal(false)}
                         onSuccess={() => { handleSelectStudent(selectedStudent); fetchRecentPayments(schoolId).then(setRecentPayments); }}
                     />
                 )}
@@ -698,6 +757,35 @@ export default function FeeManagementModule({ schoolId }: FeeManagementModulePro
                   </div>
               </div>
           </div>
+      )}
+
+      {activeTab === 'settings' && (
+        <div className="module-shell">
+          <form className="card" style={{ maxWidth: 420 }} onSubmit={handleSaveSettings}>
+            <h3>Yearly Payment Discount</h3>
+            <p className="hint" style={{ marginBottom: 16 }}>
+              Applied automatically when a parent collects a full year of monthly fees at once via "Collect All Fees".
+            </p>
+            <label>
+              Discount Percentage (%)
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.5"
+                value={yearlyDiscountPercent}
+                onChange={e => setYearlyDiscountPercent(e.target.value)}
+                required
+              />
+            </label>
+            {settingsMessage && <p className="hint" style={{ marginTop: 8 }}>{settingsMessage}</p>}
+            <div className="actions" style={{ marginTop: 20 }}>
+              <button type="submit" className="primary" disabled={isSavingSettings}>
+                {isSavingSettings ? 'Saving...' : 'Save Settings'}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </section>
   );

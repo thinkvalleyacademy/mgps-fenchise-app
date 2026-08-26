@@ -25,36 +25,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({ user: null, token: null });
 export const useAuth = () => useContext(AuthContext);
 
-const defaultPlans: SubscriptionPlan[] = [
-  {
-    planId: 'basic',
-    planName: 'Launch',
-    description: 'For a fresh franchise school getting ready to open its doors.',
-    maxStudents: 500,
-    maxStaff: 50,
-    maxUsers: 80,
-    monthlyPrice: '₹4,999'
-  },
-  {
-    planId: 'growth',
-    planName: 'Growth',
-    description: 'For expanding schools that need more room to scale operations.',
-    maxStudents: 1500,
-    maxStaff: 150,
-    maxUsers: 200,
-    monthlyPrice: '₹12,999'
-  },
-  {
-    planId: 'enterprise',
-    planName: 'Enterprise',
-    description: 'For larger franchises with advanced onboarding and reporting needs.',
-    maxStudents: 5000,
-    maxStaff: 500,
-    maxUsers: 700,
-    monthlyPrice: '₹29,999'
-  }
-];
-
 const initialForm: SchoolRegistrationPayload = {
   name: 'MGPS Horizon School',
   adminEmail: 'admin@horizon.mgps.example',
@@ -182,7 +152,8 @@ export default function App() {
   });
 
   const [schools, setSchools] = useState<SchoolSummary[]>([]);
-  const [plans, setPlans] = useState<SubscriptionPlan[]>(defaultPlans);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [plansError, setPlansError] = useState<string | null>(null);
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [planForm, setPlanForm] = useState<SubscriptionPlanDraft>({
     planName: '',
@@ -231,17 +202,19 @@ export default function App() {
     fetchSubscriptionPlans()
       .then((items) => {
         if (!active) return;
-        if (items && items.length > 0) {
-          // Map backend plans to SubscriptionPlan type if needed (e.g. id -> planId)
-          const mapped = items.map(p => ({
-            ...p,
-            planId: (p as any).id || p.planId
-          }));
-          setPlans(mapped);
-        }
+        // Map backend plans to SubscriptionPlan type if needed (e.g. id -> planId)
+        const mapped = (items ?? []).map(p => ({
+          ...p,
+          planId: (p as any).id || p.planId
+        }));
+        setPlans(mapped);
+        setPlansError(null);
       })
       .catch(err => {
+        if (!active) return;
         console.error('Failed to fetch subscription plans', err);
+        setPlans([]);
+        setPlansError(err instanceof Error ? err.message : 'Unable to fetch subscription plans');
       });
 
     return () => {
@@ -263,15 +236,16 @@ export default function App() {
   useEffect(() => {
     if (selectedModule === 'User Management' && authProfile?.schoolId) {
       loadSchoolUsers(authProfile.schoolId);
-      loadTenantOverview(authProfile.schoolId);
     }
   }, [selectedModule, authProfile?.schoolId]);
 
   useEffect(() => {
-    if (selectedModule === 'Dashboard' && authProfile?.schoolId) {
+    // Loaded once per login (rather than per-module) so the school's logo/name
+    // are available in the topbar across every module, not just Dashboard.
+    if (authProfile?.schoolId) {
       loadTenantOverview(authProfile.schoolId);
     }
-  }, [selectedModule, authProfile?.schoolId]);
+  }, [authProfile?.schoolId]);
 
   function getModulesForRole(role: string) {
     const moduleMap: Record<string, string[]> = {
@@ -553,7 +527,9 @@ export default function App() {
                   submitting={isSubmitting}
                   onSubmit={handleCreateSchool}
                   onCancel={() => setSchoolView('list')}
+                  onCreatePlan={() => { setSelectedModule('Subscription Management'); setShowPlanForm(true); }}
                 />
+                {plansError && <p className="error" style={{ marginTop: 12 }}>Could not load subscription plans: {plansError}</p>}
                 {error && <p className="error" style={{ marginTop: 12 }}>{error}</p>}
               </div>
             )}
@@ -573,7 +549,7 @@ export default function App() {
                     state: selectedSchool.state ?? '',
                     postalCode: '',
                     logoUrl: selectedSchool.logoUrl ?? '',
-                    subscriptionPlanId: selectedSchool.subscriptionPlan?.planId ?? plans[0].planId
+                    subscriptionPlanId: selectedSchool.subscriptionPlan?.planId ?? plans[0]?.planId ?? ''
                   }}
                   onSubmit={handleEditSchool}
                   onCancel={() => { setSchoolView('list'); setSelectedSchoolId(null); }}
@@ -1372,9 +1348,14 @@ export default function App() {
         <div className="ambient ambient-b" />
 
         <header className="topbar">
-          <div>
-            <p className="eyebrow">MGPS Franchise Console</p>
-            <h1>Welcome back, {authProfile.firstName}</h1>
+          <div className="brand">
+            {authProfile.schoolId && tenantOverview?.school.logoUrl ? (
+              <img src={tenantOverview.school.logoUrl} alt="School logo" className="school-logo" />
+            ) : null}
+            <div>
+              <p className="eyebrow">{authProfile.schoolId ? (tenantOverview?.school.schoolName ?? 'Loading school...') : 'MGPS Franchise Console'}</p>
+              <h1>Welcome back, {authProfile.firstName}</h1>
+            </div>
           </div>
 
           <div className="topbar-status">
@@ -1438,7 +1419,7 @@ export default function App() {
               </div>
               <div>
                 <p className="section-label">School</p>
-                <strong>{authProfile.schoolId ?? 'Master'}</strong>
+                <strong>{authProfile.schoolId ? (tenantOverview?.school.schoolName ?? 'Loading...') : 'Master'}</strong>
               </div>
             </div>
 
@@ -1639,7 +1620,7 @@ function StudentManagementModule({ schoolId }: { schoolId: string }) {
           <div className="form-grid">
             <label>First Name <input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} required /></label>
             <label>Last Name <input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} required /></label>
-            <label>Email <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required /></label>
+            <label>Email (optional) <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></label>
             <label>Phone <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></label>
             {!editingStudentId && (
               <label>Class
@@ -2073,7 +2054,7 @@ function SectionManagementModule({ schoolId }: { schoolId: string }) {
   const [sections, setSections] = useState<any[]>([]);
   const [selectedClassId, setSelectedClassId] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', capacity: 40 });
+  const [form, setForm] = useState({ name: 'A', capacity: 40 });
 
   useEffect(() => {
     fetchClasses(schoolId).then(setClasses);
@@ -2092,7 +2073,7 @@ function SectionManagementModule({ schoolId }: { schoolId: string }) {
     try {
       await createSection({ ...form, classId: selectedClassId, schoolId });
       setShowForm(false);
-      setForm({ name: '', capacity: 40 });
+      setForm({ name: 'A', capacity: 40 });
       fetchSections(selectedClassId).then(setSections);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to create section');

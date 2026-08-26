@@ -8,9 +8,10 @@ type Props = {
   submitLabel?: string;
   onCancel?: () => void;
   onSubmit: (payload: SchoolRegistrationPayload) => Promise<void>;
+  onCreatePlan?: () => void;
 };
 
-export default function CreateSchoolForm({ initial, plans, submitting, submitLabel = 'Create school', onCancel, onSubmit }: Props) {
+export default function CreateSchoolForm({ initial, plans, submitting, submitLabel = 'Create school', onCancel, onSubmit, onCreatePlan }: Props) {
   const [form, setForm] = useState<SchoolRegistrationPayload>(initial ?? ({} as SchoolRegistrationPayload));
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -129,15 +130,26 @@ export default function CreateSchoolForm({ initial, plans, submitting, submitLab
 
         <label className="full">
           Subscription plan
-          <div className="plan-options">
-            {plans.map((plan) => (
-              <button key={plan.planId} type="button" className={`plan-option ${plan.planId === form.subscriptionPlanId ? 'active' : ''}`} onClick={() => updateField('subscriptionPlanId', plan.planId)}>
-                <strong>{plan.planName}</strong>
-                <span>{plan.monthlyPrice}</span>
-                <small>{plan.maxStudents?.toLocaleString('en-IN')} students</small>
-              </button>
-            ))}
-          </div>
+          {plans.length > 0 ? (
+            <div className="plan-options">
+              {plans.map((plan) => (
+                <button key={plan.planId} type="button" className={`plan-option ${plan.planId === form.subscriptionPlanId ? 'active' : ''}`} onClick={() => updateField('subscriptionPlanId', plan.planId)}>
+                  <strong>{plan.planName}</strong>
+                  <span>{plan.monthlyPrice}</span>
+                  <small>{plan.maxStudents?.toLocaleString('en-IN')} students</small>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state" style={{ padding: 16 }}>
+              <p>No subscription plans available yet.</p>
+              {onCreatePlan ? (
+                <button type="button" className="primary small" onClick={onCreatePlan}>
+                  Create new plan
+                </button>
+              ) : null}
+            </div>
+          )}
         </label>
       </div>
 

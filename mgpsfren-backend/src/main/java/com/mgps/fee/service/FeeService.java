@@ -4,18 +4,23 @@ import com.mgps.academic.entity.AcademicYear;
 import com.mgps.academic.repository.AcademicClassRepository;
 import com.mgps.academic.repository.AcademicYearRepository;
 import com.mgps.common.exception.BusinessLogicException;
+import com.mgps.fee.dto.BulkFeePaymentRequestDTO;
+import com.mgps.fee.dto.BulkFeePaymentResultDTO;
 import com.mgps.fee.dto.FeeCategoryDTO;
 import com.mgps.fee.dto.FeePaymentDTO;
 import com.mgps.fee.dto.FeeReportDTOs.*;
+import com.mgps.fee.dto.FeeSettingsDTO;
 import com.mgps.fee.dto.FeeStructureDTO;
 import com.mgps.fee.dto.StudentFeeDTO;
 import com.mgps.fee.entity.FeeCategory;
 import com.mgps.fee.entity.FeePayment;
+import com.mgps.fee.entity.FeeSettings;
 import com.mgps.fee.entity.FeeStatus;
 import com.mgps.fee.entity.FeeStructure;
 import com.mgps.fee.entity.StudentFee;
 import com.mgps.fee.repository.FeeCategoryRepository;
 import com.mgps.fee.repository.FeePaymentRepository;
+import com.mgps.fee.repository.FeeSettingsRepository;
 import com.mgps.fee.repository.FeeStructureRepository;
 import com.mgps.fee.repository.StudentFeeRepository;
 import com.mgps.student.entity.Student;
@@ -32,6 +37,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -54,6 +61,9 @@ public class FeeService {
 
     @Autowired
     private FeePaymentRepository paymentRepository;
+
+    @Autowired
+    private FeeSettingsRepository feeSettingsRepository;
 
     @Autowired
     private StudentRepository studentRepository;
@@ -95,29 +105,38 @@ public class FeeService {
 
     // --- Fee Structure Operations ---
 
-    public FeeStructureDTO createStructure(FeeStructureDTO dto) {
-        if (dto.getClassId() == null) {
+    public List<FeeStructureDTO> createStructure(FeeStructureDTO dto) {
+        List<UUID> targetClassIds;
+        if (Boolean.TRUE.equals(dto.getApplyToAllClasses())) {
+            targetClassIds = Collections.singletonList(null);
+        } else if (dto.getClassIds() != null && !dto.getClassIds().isEmpty()) {
+            targetClassIds = dto.getClassIds();
+        } else if (dto.getClassId() != null) {
+            targetClassIds = List.of(dto.getClassId());
+        } else {
             throw new BusinessLogicException("Target Class is required");
         }
 
         FeeCategory category = categoryRepository.findById(dto.getFeeCategoryId())
                 .orElseThrow(() -> new RuntimeException("Fee Category not found"));
-
-        FeeStructure structure = new FeeStructure();
-        structure.setId(UUID.randomUUID());
-        structure.setSchoolId(dto.getSchoolId());
-        structure.setAcademicYearId(dto.getAcademicYearId());
-        structure.setClassId(dto.getClassId());
-        structure.setCategory(category);
-        structure.setAmount(dto.getAmount());
         String recurrenceType = resolveRecurrenceType(dto.getRecurrenceType(), category.getName());
-        structure.setDueDate(RECURRENCE_MONTHLY.equals(recurrenceType) ? null : dto.getDueDate());
-        structure.setIsDefault(dto.getIsDefault() != null ? dto.getIsDefault() : false);
-        structure.setRecurrenceType(recurrenceType);
-        structure.setActive(true);
 
-        FeeStructure saved = structureRepository.save(structure);
-        return mapToDTO(saved);
+        List<FeeStructureDTO> created = new ArrayList<>();
+        for (UUID classId : targetClassIds) {
+            FeeStructure structure = new FeeStructure();
+            structure.setId(UUID.randomUUID());
+            structure.setSchoolId(dto.getSchoolId());
+            structure.setAcademicYearId(dto.getAcademicYearId());
+            structure.setClassId(classId);
+            structure.setCategory(category);
+            structure.setAmount(dto.getAmount());
+            structure.setDueDate(RECURRENCE_MONTHLY.equals(recurrenceType) ? null : dto.getDueDate());
+            structure.setIsDefault(dto.getIsDefault() != null ? dto.getIsDefault() : false);
+            structure.setRecurrenceType(recurrenceType);
+            structure.setActive(true);
+            created.add(mapToDTO(structureRepository.save(structure)));
+        }
+        return created;
     }
 
     public List<FeeStructureDTO> getStructures(UUID schoolId, UUID academicYearId) {
@@ -284,7 +303,10 @@ public class FeeService {
     public FeePaymentDTO processPayment(FeePaymentDTO dto) {
         StudentFee studentFee = studentFeeRepository.findById(dto.getStudentFeeId())
                 .orElseThrow(() -> new RuntimeException("Student Fee record not found"));
+        return processPaymentInternal(studentFee, dto);
+    }
 
+    private FeePaymentDTO processPaymentInternal(StudentFee studentFee, FeePaymentDTO dto) {
         if (dto.getAmountPaid() == null || dto.getAmountPaid().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessLogicException("Payment amount must be greater than zero");
         }
@@ -309,11 +331,160 @@ public class FeeService {
 
         // Update StudentFee status and paid amount
         studentFee.setAmountPaid(studentFee.getAmountPaid().add(dto.getAmountPaid()));
-        
+
         updateStatus(studentFee);
         studentFeeRepository.save(studentFee);
 
         return mapToDTO(saved);
+    }
+
+    /**
+     * Collects all of a student's outstanding fee items in one go for the selected
+     * period (MONTH/QUARTER/YEAR). A YEAR collection applies the school's configured
+     * yearly-payment discount (see FeeSettings), computed server-side.
+     */
+    public BulkFeePaymentResultDTO processBulkPayment(BulkFeePaymentRequestDTO dto) {
+        if (dto.getStudentId() == null) {
+            throw new BusinessLogicException("Student is required");
+        }
+        String collectionType = dto.getCollectionType() == null ? "MONTH" : dto.getCollectionType().toUpperCase();
+        if (!List.of("MONTH", "QUARTER", "YEAR").contains(collectionType)) {
+            throw new BusinessLogicException("Invalid collection type");
+        }
+
+        List<StudentFee> pendingFees = studentFeeRepository.findByStudentId(dto.getStudentId()).stream()
+                .filter(sf -> dto.getAcademicYearId() == null || dto.getAcademicYearId().equals(sf.getFeeStructure().getAcademicYearId()))
+                .peek(this::updateStatus)
+                .filter(sf -> calculateOutstandingBalance(sf).compareTo(BigDecimal.ZERO) > 0)
+                .collect(Collectors.toList());
+
+        if (pendingFees.isEmpty()) {
+            throw new BusinessLogicException("No pending fees to collect for this student");
+        }
+
+        BigDecimal discountPercent = "YEAR".equals(collectionType)
+                ? getOrCreateSettingsEntity(dto.getSchoolId()).getYearlyDiscountPercent()
+                : BigDecimal.ZERO;
+
+        List<FeePaymentDTO> payments = new ArrayList<>();
+        BigDecimal totalCollected = BigDecimal.ZERO;
+        BigDecimal totalDiscount = BigDecimal.ZERO;
+
+        for (StudentFee sf : pendingFees) {
+            Integer monthFrom = null;
+            Integer monthTo = null;
+            BigDecimal amountBeforeDiscount;
+
+            if (RECURRENCE_MONTHLY.equals(sf.getFeeStructure().getRecurrenceType())) {
+                int monthsToCover = resolveMonthsForCollectionType(sf, collectionType);
+                if (monthsToCover <= 0) {
+                    continue;
+                }
+                int paidThrough = calculatePaidThroughMonth(sf);
+                monthFrom = paidThrough + 1;
+                monthTo = Math.min(paidThrough + monthsToCover, calculateTotalMonthsInSession(sf));
+                if (monthTo < monthFrom) {
+                    continue;
+                }
+                int coveredMonths = monthTo - monthFrom + 1;
+                amountBeforeDiscount = sf.getAmountDue().multiply(BigDecimal.valueOf(coveredMonths));
+            } else {
+                amountBeforeDiscount = calculateOutstandingBalance(sf);
+                if (amountBeforeDiscount.compareTo(BigDecimal.ZERO) <= 0) {
+                    continue;
+                }
+            }
+
+            BigDecimal discountForItem = discountPercent.compareTo(BigDecimal.ZERO) > 0
+                    ? amountBeforeDiscount.multiply(discountPercent).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+            BigDecimal amountToCollect = amountBeforeDiscount.subtract(discountForItem);
+
+            if (discountForItem.compareTo(BigDecimal.ZERO) > 0) {
+                sf.setDiscountAmount(safeAmount(sf.getDiscountAmount()).add(discountForItem));
+                sf.setDiscountReason(appendDiscountReason(sf.getDiscountReason(),
+                        "Yearly payment discount (" + discountPercent.stripTrailingZeros().toPlainString() + "%)"));
+            }
+
+            FeePaymentDTO paymentDto = new FeePaymentDTO();
+            paymentDto.setAmountPaid(amountToCollect);
+            paymentDto.setPaymentMode(dto.getPaymentMode());
+            paymentDto.setTransactionId(dto.getTransactionId());
+            paymentDto.setRemarks(dto.getRemarks());
+            paymentDto.setProcessedBy(dto.getProcessedBy());
+            paymentDto.setMonthFrom(monthFrom);
+            paymentDto.setMonthTo(monthTo);
+
+            payments.add(processPaymentInternal(sf, paymentDto));
+            totalCollected = totalCollected.add(amountToCollect);
+            totalDiscount = totalDiscount.add(discountForItem);
+        }
+
+        if (payments.isEmpty()) {
+            throw new BusinessLogicException("No pending fees to collect for the selected period");
+        }
+
+        BulkFeePaymentResultDTO result = new BulkFeePaymentResultDTO();
+        result.setStudentId(dto.getStudentId());
+        result.setCollectionType(collectionType);
+        result.setPayments(payments);
+        result.setTotalCollected(totalCollected);
+        result.setDiscountPercentApplied(discountPercent);
+        result.setTotalDiscountApplied(totalDiscount);
+        return result;
+    }
+
+    private int resolveMonthsForCollectionType(StudentFee sf, String collectionType) {
+        int paidThrough = calculatePaidThroughMonth(sf);
+        int totalMonths = calculateTotalMonthsInSession(sf);
+        int remaining = totalMonths - paidThrough;
+        if (remaining <= 0) {
+            return 0;
+        }
+        return switch (collectionType) {
+            case "QUARTER" -> Math.min(3, remaining);
+            case "YEAR" -> remaining;
+            default -> Math.min(1, remaining);
+        };
+    }
+
+    private String appendDiscountReason(String existing, String addition) {
+        if (existing == null || existing.isBlank()) {
+            return addition;
+        }
+        if (existing.contains(addition)) {
+            return existing;
+        }
+        return existing + "; " + addition;
+    }
+
+    // --- Fee Settings Operations ---
+
+    public FeeSettingsDTO getSettings(UUID schoolId) {
+        FeeSettings settings = getOrCreateSettingsEntity(schoolId);
+        return new FeeSettingsDTO(settings.getSchoolId(), settings.getYearlyDiscountPercent());
+    }
+
+    public FeeSettingsDTO updateSettings(UUID schoolId, BigDecimal yearlyDiscountPercent) {
+        if (yearlyDiscountPercent == null
+                || yearlyDiscountPercent.compareTo(BigDecimal.ZERO) < 0
+                || yearlyDiscountPercent.compareTo(new BigDecimal(100)) > 0) {
+            throw new BusinessLogicException("Yearly discount percent must be between 0 and 100");
+        }
+        FeeSettings settings = getOrCreateSettingsEntity(schoolId);
+        settings.setYearlyDiscountPercent(yearlyDiscountPercent);
+        FeeSettings saved = feeSettingsRepository.save(settings);
+        return new FeeSettingsDTO(saved.getSchoolId(), saved.getYearlyDiscountPercent());
+    }
+
+    private FeeSettings getOrCreateSettingsEntity(UUID schoolId) {
+        return feeSettingsRepository.findBySchoolId(schoolId).orElseGet(() -> {
+            FeeSettings settings = new FeeSettings();
+            settings.setId(UUID.randomUUID());
+            settings.setSchoolId(schoolId);
+            settings.setYearlyDiscountPercent(new BigDecimal("5.00"));
+            return feeSettingsRepository.save(settings);
+        });
     }
 
     public List<FeePaymentDTO> getRecentPayments(UUID schoolId) {

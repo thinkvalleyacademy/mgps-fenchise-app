@@ -2,6 +2,7 @@ package com.mgps.school.controller;
 
 import com.mgps.common.dto.ApiResponse;
 import com.mgps.common.exception.ResourceNotFoundException;
+import com.mgps.school.dto.SubscriptionPlanDTO;
 import com.mgps.school.dto.SubscriptionPlanRequestDTO;
 import com.mgps.school.entity.SubscriptionPlan;
 import com.mgps.school.repository.SubscriptionPlanRepository;
@@ -35,10 +36,24 @@ public class SubscriptionPlanController {
     @GetMapping
     public ResponseEntity<ApiResponse<?>> getAllPlans() {
         log.info("Fetching all active subscription plans");
-        List<SubscriptionPlan> plans = subscriptionPlanRepository.findAll().stream()
+        List<SubscriptionPlanDTO> plans = subscriptionPlanRepository.findAll().stream()
                 .filter(SubscriptionPlan::getIsActive)
+                .map(SubscriptionPlanController::toDto)
                 .toList();
         return ResponseEntity.ok(ApiResponse.success(plans, "Subscription plans retrieved successfully"));
+    }
+
+    private static SubscriptionPlanDTO toDto(SubscriptionPlan plan) {
+        return SubscriptionPlanDTO.builder()
+            .planId(plan.getId())
+            .planName(plan.getPlanName())
+            .description(plan.getDescription())
+            .maxStudents(plan.getMaxStudents())
+            .maxStaff(plan.getMaxStaff())
+            .maxUsers(plan.getMaxUsers())
+            .monthlyPrice(plan.getMonthlyPrice() != null ? plan.getMonthlyPrice().toPlainString() : null)
+            .isActive(plan.getIsActive())
+            .build();
     }
 
     @PostMapping

@@ -272,8 +272,31 @@ export async function fetchFeeStructures(schoolId: string, academicYearId: strin
   return request(`/fees/structures?schoolId=${schoolId}&academicYearId=${academicYearId}`);
 }
 
-export async function createFeeStructure(payload: any): Promise<any> {
+export async function createFeeStructure(payload: any): Promise<any[]> {
   return request('/fees/structures', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function fetchFeeSettings(schoolId: string): Promise<{ schoolId: string; yearlyDiscountPercent: number }> {
+  return request(`/fees/settings?schoolId=${schoolId}`);
+}
+
+export async function updateFeeSettings(schoolId: string, yearlyDiscountPercent: number): Promise<{ schoolId: string; yearlyDiscountPercent: number }> {
+  return request(`/fees/settings?schoolId=${schoolId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ yearlyDiscountPercent })
+  });
+}
+
+export async function bulkCollectFees(payload: {
+  schoolId: string;
+  studentId: string;
+  academicYearId?: string;
+  collectionType: 'MONTH' | 'QUARTER' | 'YEAR';
+  paymentMode: string;
+  transactionId?: string;
+  remarks?: string;
+}): Promise<any> {
+  return request('/fees/payments/bulk', { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export async function applyFeeDiscount(studentFeeId: string, amount: number, reason: string): Promise<any> {

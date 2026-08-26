@@ -1,8 +1,11 @@
 package com.mgps.fee.controller;
 
+import com.mgps.fee.dto.BulkFeePaymentRequestDTO;
+import com.mgps.fee.dto.BulkFeePaymentResultDTO;
 import com.mgps.fee.dto.FeeCategoryDTO;
 import com.mgps.fee.dto.FeePaymentDTO;
 import com.mgps.fee.dto.FeeReportDTOs.*;
+import com.mgps.fee.dto.FeeSettingsDTO;
 import com.mgps.fee.dto.FeeStructureDTO;
 import com.mgps.fee.dto.StudentFeeDTO;
 import com.mgps.fee.service.FeeService;
@@ -37,7 +40,7 @@ public class FeeController {
     // --- Fee Structures ---
 
     @PostMapping("/structures")
-    public ResponseEntity<FeeStructureDTO> createStructure(@RequestBody FeeStructureDTO dto) {
+    public ResponseEntity<List<FeeStructureDTO>> createStructure(@RequestBody FeeStructureDTO dto) {
         return ResponseEntity.ok(feeService.createStructure(dto));
     }
 
@@ -74,9 +77,27 @@ public class FeeController {
         return ResponseEntity.ok(feeService.processPayment(dto));
     }
 
+    @PostMapping("/payments/bulk")
+    public ResponseEntity<BulkFeePaymentResultDTO> processBulkPayment(@RequestBody BulkFeePaymentRequestDTO dto) {
+        return ResponseEntity.ok(feeService.processBulkPayment(dto));
+    }
+
     @GetMapping("/payments/recent")
     public ResponseEntity<List<FeePaymentDTO>> getRecentPayments(@RequestParam UUID schoolId) {
         return ResponseEntity.ok(feeService.getRecentPayments(schoolId));
+    }
+
+    // --- Fee Settings ---
+
+    @GetMapping("/settings")
+    public ResponseEntity<FeeSettingsDTO> getSettings(@RequestParam UUID schoolId) {
+        return ResponseEntity.ok(feeService.getSettings(schoolId));
+    }
+
+    @PutMapping("/settings")
+    public ResponseEntity<FeeSettingsDTO> updateSettings(@RequestParam UUID schoolId,
+                                                          @RequestBody FeeSettingsDTO dto) {
+        return ResponseEntity.ok(feeService.updateSettings(schoolId, dto.getYearlyDiscountPercent()));
     }
 
     // --- Reports ---
