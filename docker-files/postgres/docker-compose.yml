@@ -57,5 +57,5 @@ volumes:
 
 networks:
   mgps-shared:
-    name: mgps-shared
+    name: ${DB_NETWORK_NAME:-mgps-shared}
     external: true

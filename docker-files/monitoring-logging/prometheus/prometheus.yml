@@ -8,10 +8,11 @@ scrape_configs:
       - targets: ["localhost:9090"]
 
   # The Spring Boot backend from docker-files/application/production, joined
-  # via the external mgps-shared network. Scraping is read-only HTTP GET
-  # against the actuator endpoint already exposed in application.yml
-  # (management.endpoints.web.exposure.include) — no changes to the app
-  # itself, and no impact on it beyond one lightweight request every 15s.
+  # via that environment's app-net network (see APP_NETWORK_NAME in .env).
+  # Scraping is read-only HTTP GET against the actuator endpoint already
+  # exposed in application.yml (management.endpoints.web.exposure.include)
+  # — no changes to the app itself, and no impact on it beyond one
+  # lightweight request every 15s.
   - job_name: mgps-backend
     metrics_path: /api/actuator/prometheus
     static_configs:

@@ -45,9 +45,11 @@ stack:
    echo 'vm.max_map_count=262144' | sudo tee -a /etc/sysctl.conf
    ```
 
-3. **The app stack must already be running** and joined to the external
-   `mgps-shared` network (it creates it) — Prometheus attaches to that same
-   network to reach `backend:8080`.
+3. **The app stack must already be running** — it creates its own `app-net`
+   network (named by `APP_NETWORK_NAME`, default `mgps-net-prod`) when it
+   starts, and Prometheus attaches to that same network to reach
+   `backend:8080`. Set `APP_NETWORK_NAME` in this stack's `.env` to match
+   whichever environment you want to monitor.
 
 ## Generating Graylog secrets
 

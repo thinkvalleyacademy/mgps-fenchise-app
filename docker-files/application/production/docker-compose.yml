@@ -4,10 +4,10 @@ services:
       context: ${CODE_DIR:-/home/mgps01/mgpsv2/code/mgpsfren/mgps-fenchise-app}
       dockerfile: mgpsfren-backend/Dockerfile
       network: host
-    container_name: mgps-backend
     restart: unless-stopped
     networks:
-      - mgps-shared
+      - app-net
+      - db-net
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SERVER_PORT: 8080
@@ -25,7 +25,7 @@ services:
       # without needing access to this compose project or its containers.
       - ${APP_LOG_DIR:-/var/log/mgps}/backend:/app/logs
     # No host port publish here on purpose: the backend is only reachable via
-    # nginx-proxy over the internal mgps-shared network, so nginx's CORS/rate
+    # nginx-proxy over the internal app-net network, so nginx's CORS/rate
     # limiting rules can't be bypassed by hitting the backend directly.
 
   frontend:
@@ -35,24 +35,22 @@ services:
       network: host
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
-    container_name: mgps-frontend
     restart: unless-stopped
     depends_on:
       - backend
     networks:
-      - mgps-shared
+      - app-net
     expose:
       - "80"
 
   nginx-proxy:
     image: nginx:1.27-alpine
-    container_name: mgps-proxy
     restart: unless-stopped
     depends_on:
       - frontend
       - backend
     networks:
-      - mgps-shared
+      - app-net
     ports:
       - "${PROXY_PORT:-6080}:80"
     volumes:
@@ -60,8 +58,21 @@ services:
       - ${APP_LOG_DIR:-/var/log/mgps}/nginx:/var/log/nginx
 
 networks:
-  mgps-shared:
-    name: mgps-shared
+  # Private to this compose project (this environment only) — Compose creates
+  # it automatically, no manual `docker network create` needed. Give a second
+  # environment (e.g. a `dev` copy of this folder) a different
+  # APP_NETWORK_NAME in its own .env and the two environments' identically-
+  # named services (backend, frontend, nginx-proxy) never collide.
+  app-net:
+    name: ${APP_NETWORK_NAME:-mgps-net-prod}
+
+  # Shared infrastructure network Postgres lives on (see ../../postgres).
+  # Deliberately the SAME network name across every environment on this
+  # server, since they all talk to the one shared Postgres instance,
+  # isolated from each other only by DB_NAME. Must already exist — see
+  # ../../postgres/docker-compose.yml / README.
+  db-net:
+    name: ${DB_NETWORK_NAME:-mgps-shared}
     external: true
 
 volumes:

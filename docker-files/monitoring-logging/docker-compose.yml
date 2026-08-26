@@ -17,18 +17,16 @@ services:
   # ---------------------------------------------------------------------
   prometheus:
     image: prom/prometheus:v2.54.1
-    container_name: mgps-prometheus
     restart: unless-stopped
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     networks:
       - monitoring-net
-      - mgps-shared # to reach `backend:8080` for scraping only
+      - app-net # to reach `backend:8080` for scraping only
 
   node-exporter:
     image: prom/node-exporter:v1.8.2
-    container_name: mgps-node-exporter
     restart: unless-stopped
     pid: host
     volumes:
@@ -45,7 +43,6 @@ services:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
-    container_name: mgps-cadvisor
     restart: unless-stopped
     privileged: true
     volumes:
@@ -59,7 +56,6 @@ services:
 
   grafana:
     image: grafana/grafana:11.2.0
-    container_name: mgps-grafana
     restart: unless-stopped
     depends_on:
       - prometheus
@@ -82,7 +78,6 @@ services:
   # ---------------------------------------------------------------------
   mongodb:
     image: mongo:6.0
-    container_name: mgps-graylog-mongodb
     restart: unless-stopped
     volumes:
       - mongo-data:/data/db
@@ -96,7 +91,6 @@ services:
 
   opensearch:
     image: opensearchproject/opensearch:2.15.0
-    container_name: mgps-graylog-opensearch
     restart: unless-stopped
     environment:
       discovery.type: single-node
@@ -119,7 +113,6 @@ services:
 
   graylog:
     image: graylog/graylog:5.2
-    container_name: mgps-graylog
     restart: unless-stopped
     depends_on:
       mongodb:
@@ -148,7 +141,6 @@ services:
 
   filebeat:
     image: docker.elastic.co/beats/filebeat/filebeat:8.15.1
-    container_name: mgps-filebeat
     restart: unless-stopped
     user: root # required for filebeat to read /var/log/mgps and its own data dir
     depends_on:
@@ -163,8 +155,12 @@ services:
 networks:
   monitoring-net:
     name: mgps-monitoring
-  mgps-shared:
-    name: mgps-shared
+  # The app environment being monitored (see APP_NETWORK_NAME in that
+  # environment's own .env — default matches application/production's
+  # default of mgps-net-prod). Pointing this stack at a different
+  # environment's backend is just a matter of changing this one value.
+  app-net:
+    name: ${APP_NETWORK_NAME:-mgps-net-prod}
     external: true
 
 volumes:
