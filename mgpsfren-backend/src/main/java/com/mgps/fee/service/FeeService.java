@@ -24,6 +24,7 @@ import com.mgps.fee.repository.FeeSettingsRepository;
 import com.mgps.fee.repository.FeeStructureRepository;
 import com.mgps.fee.entity.FineType;
 import com.mgps.fee.repository.StudentFeeRepository;
+import com.mgps.storage.FileStorageService;
 import com.mgps.student.entity.Student;
 import com.mgps.student.repository.StudentRepository;
 import com.mgps.tenant.TenantGuard;
@@ -66,6 +67,9 @@ public class FeeService {
 
     @Autowired
     private FeeSettingsRepository feeSettingsRepository;
+
+    @Autowired
+    private FileStorageService fileStorageService;
 
     @Autowired
     private StudentRepository studentRepository;
@@ -791,13 +795,20 @@ public class FeeService {
 
     private SchoolBranding findSchoolBranding(UUID schoolId) {
         try {
-            return jdbcTemplate.queryForObject("""
+            SchoolBranding branding = jdbcTemplate.queryForObject("""
                     SELECT school_name, logo_url
                     FROM tenant_school_snapshot
                     WHERE school_id = ?
                     """,
                     (rs, rowNum) -> new SchoolBranding(rs.getString("school_name"), rs.getString("logo_url")),
                     schoolId);
+            if (branding != null && FileStorageService.isStoredReference(branding.logoUrl())) {
+                // jsPDF's addImage needs actual image data, not a URL — read the
+                // file back as a data URL so receipt generation is unaffected by
+                // logos having moved off base64-in-the-database.
+                return new SchoolBranding(branding.schoolName(), fileStorageService.readAsDataUrl(branding.logoUrl()));
+            }
+            return branding;
         } catch (DataAccessException ex) {
             return new SchoolBranding("School", null);
         }

@@ -2,6 +2,7 @@ package com.mgps.school.service;
 
 import com.mgps.common.exception.DuplicateResourceException;
 import com.mgps.common.exception.ResourceNotFoundException;
+import com.mgps.common.util.PiiMasking;
 import com.mgps.school.dto.*;
 import com.mgps.school.entity.School;
 import com.mgps.school.entity.SchoolDomain;
@@ -11,6 +12,7 @@ import com.mgps.school.exception.DatabaseProvisioningException;
 import com.mgps.school.repository.SchoolDomainRepository;
 import com.mgps.school.repository.SchoolRepository;
 import com.mgps.school.repository.SubscriptionPlanRepository;
+import com.mgps.storage.FileStorageService;
 import com.mgps.tenant.RoutingDataSource;
 import com.mgps.tenant.TenantNamingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,6 +60,9 @@ public class SchoolService {
     @Autowired
     private TenantSchoolDataService tenantSchoolDataService;
 
+    @Autowired
+    private FileStorageService fileStorageService;
+
     /**
      * Register a new school
      * Steps:
@@ -75,7 +80,7 @@ public class SchoolService {
         
         // Validation
         if (schoolRepository.existsByAdminEmail(dto.getAdminEmail())) {
-            log.warn("Attempt to register school with existing email: {}", dto.getAdminEmail());
+            log.warn("Attempt to register school with existing email: {}", PiiMasking.maskEmail(dto.getAdminEmail()));
             throw new DuplicateResourceException("School with this email already exists");
         }
 
@@ -102,6 +107,9 @@ public class SchoolService {
 
         // Create school entity
         UUID schoolId = UUID.randomUUID();
+        String logoUrl = FileStorageService.isDataUrl(dto.getLogoUrl())
+            ? fileStorageService.storeDataUrl(schoolId, "logos", dto.getLogoUrl())
+            : dto.getLogoUrl();
         School school = School.builder()
             .id(schoolId)
             .name(dto.getName())
@@ -111,7 +119,7 @@ public class SchoolService {
             .city(dto.getCity())
             .state(dto.getState())
             .postalCode(dto.getPostalCode())
-            .logoUrl(dto.getLogoUrl())
+            .logoUrl(logoUrl)
             .subscriptionPlan(plan)
             .status(SchoolStatus.ACTIVE)
             .build();
@@ -204,7 +212,11 @@ public class SchoolService {
         if (dto.getCity() != null) school.setCity(dto.getCity());
         if (dto.getState() != null) school.setState(dto.getState());
         if (dto.getPostalCode() != null) school.setPostalCode(dto.getPostalCode());
-        if (dto.getLogoUrl() != null) school.setLogoUrl(dto.getLogoUrl());
+        if (dto.getLogoUrl() != null) {
+            school.setLogoUrl(FileStorageService.isDataUrl(dto.getLogoUrl())
+                ? fileStorageService.storeDataUrl(schoolId, "logos", dto.getLogoUrl())
+                : dto.getLogoUrl());
+        }
         if (dto.getSubscriptionPlanId() != null) {
             SubscriptionPlan plan = subscriptionPlanRepository.findById(dto.getSubscriptionPlanId())
                 .orElseThrow(() -> new ResourceNotFoundException("Subscription plan not found"));

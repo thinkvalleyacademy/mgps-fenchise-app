@@ -9,6 +9,7 @@ import com.mgps.school.repository.SubscriptionPlanRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -57,6 +58,7 @@ public class SubscriptionPlanController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<?>> createPlan(@RequestBody SubscriptionPlanRequestDTO dto) {
         log.info("Creating subscription plan: {}", dto.getPlanName());
         SubscriptionPlan plan = new SubscriptionPlan();
@@ -74,6 +76,7 @@ public class SubscriptionPlanController {
     }
 
     @PutMapping("/{planId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<?>> updatePlan(@PathVariable UUID planId, @RequestBody SubscriptionPlanRequestDTO dto) {
         log.info("Updating subscription plan: {}", planId);
         SubscriptionPlan plan = subscriptionPlanRepository.findById(planId)

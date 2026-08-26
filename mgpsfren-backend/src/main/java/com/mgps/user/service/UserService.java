@@ -2,6 +2,7 @@ package com.mgps.user.service;
 
 import com.mgps.common.exception.DuplicateResourceException;
 import com.mgps.common.exception.ResourceNotFoundException;
+import com.mgps.common.util.PiiMasking;
 import com.mgps.audit.ActivityLogService;
 import com.mgps.school.entity.School;
 import com.mgps.tenant.TenantContext;
@@ -97,7 +98,7 @@ public class UserService {
     public AuthResponse registerUser(RegisterUserRequest request) {
         AppUser saved;
         log.info("registerUser request | schoolId={} email={} role={} passwordLength={}",
-            request.getSchoolId(), request.getEmail(), request.getRole(),
+            request.getSchoolId(), PiiMasking.maskEmail(request.getEmail()), request.getRole(),
             request.getPassword() == null ? 0 : request.getPassword().length());
         if (request.getSchoolId() == null) {
             saved = createUser(request);
@@ -120,16 +121,16 @@ public class UserService {
         String passwordHash = passwordEncoder.encode(request.getPassword());
 
         log.info("createUserInTenant start | schoolId={} schoolName={} database={} email={} currentTenant={}",
-            school.getId(), school.getName(), school.getDatabaseName(), email, TenantContext.getTenant());
+            school.getId(), school.getName(), school.getDatabaseName(), PiiMasking.maskEmail(email), TenantContext.getTenant());
 
         AppUser savedMaster = null;
         AppUser savedTenant = null;
 
         // Duplicate checks must happen before any save to avoid partial insertions.
         boolean masterExists = tenantExecutionService.inMaster(() -> {
-            log.info("createUserInTenant master-duplicate-check | email={} currentTenant={}", email, TenantContext.getTenant());
+            log.info("createUserInTenant master-duplicate-check | email={} currentTenant={}", PiiMasking.maskEmail(email), TenantContext.getTenant());
             var existing = appUserRepository.findByEmail(email);
-            log.info("createUserInTenant master-duplicate-check result | email={} found={}", email, existing.isPresent());
+            log.info("createUserInTenant master-duplicate-check result | email={} found={}", PiiMasking.maskEmail(email), existing.isPresent());
             return existing.isPresent();
         });
         if (masterExists) {
@@ -137,9 +138,9 @@ public class UserService {
         }
 
         boolean tenantExists = tenantExecutionService.inTenant(school, () -> {
-            log.info("createUserInTenant tenant-duplicate-check | email={} currentTenant={}", email, TenantContext.getTenant());
+            log.info("createUserInTenant tenant-duplicate-check | email={} currentTenant={}", PiiMasking.maskEmail(email), TenantContext.getTenant());
             var existing = appUserRepository.findByEmail(email);
-            log.info("createUserInTenant tenant-duplicate-check result | email={} found={}", email, existing.isPresent());
+            log.info("createUserInTenant tenant-duplicate-check result | email={} found={}", PiiMasking.maskEmail(email), existing.isPresent());
             return existing.isPresent();
         });
         if (tenantExists) {
@@ -151,17 +152,17 @@ public class UserService {
                 AppUser masterUser = buildUser(request, userId, email, passwordHash);
                 AppUser saved = appUserRepository.save(masterUser);
                 log.info("createUserInTenant master-saved | userId={} email={} schoolId={}",
-                    saved.getId(), saved.getEmail(), saved.getSchoolId());
+                    saved.getId(), PiiMasking.maskEmail(saved.getEmail()), saved.getSchoolId());
                 return saved;
             });
 
             savedTenant = tenantExecutionService.inTenant(school, () -> {
                 AppUser tenantUser = buildUser(request, userId, email, passwordHash);
                 log.info("createUserInTenant tenant-save-target | email={} expectedDatabase={}",
-                    email, school.getDatabaseName());
+                    PiiMasking.maskEmail(email), school.getDatabaseName());
                 AppUser saved = appUserRepository.save(tenantUser);
                 log.info("createUserInTenant tenant-saved | userId={} email={} schoolId={} expectedDatabase={}",
-                    saved.getId(), saved.getEmail(), saved.getSchoolId(), school.getDatabaseName());
+                    saved.getId(), PiiMasking.maskEmail(saved.getEmail()), saved.getSchoolId(), school.getDatabaseName());
                 return saved;
             });
 
@@ -345,7 +346,7 @@ public class UserService {
     private void recordUserCreated(School school, AppUser masterUser, AppUser tenantUser) {
         String actorEmail = currentActorEmail();
         Map<String, Object> details = Map.of(
-            "email", tenantUser.getEmail(),
+            "email", PiiMasking.maskEmail(tenantUser.getEmail()),
             "role", tenantUser.getRole().name(),
             "schoolName", school.getName(),
             "subscription", school.getSubscriptionPlan() != null

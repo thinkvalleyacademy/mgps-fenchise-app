@@ -28,5 +28,11 @@ public class MasterSchemaMaintenance {
     public void applyMasterSchemaFixes() {
         masterJdbcTemplate.execute("ALTER TABLE IF EXISTS schools ALTER COLUMN logo_url TYPE TEXT");
         log.info("Verified master schema supports long school logo values");
+
+        // Encrypted values (base64(iv + ciphertext)) are longer than the plain
+        // text they replace — see EncryptedStringConverter.
+        masterJdbcTemplate.execute("ALTER TABLE IF EXISTS schools ALTER COLUMN admin_phone TYPE TEXT");
+        masterJdbcTemplate.execute("ALTER TABLE IF EXISTS app_users ALTER COLUMN phone TYPE TEXT");
+        log.info("Verified master schema supports encrypted contact-detail values");
     }
 }

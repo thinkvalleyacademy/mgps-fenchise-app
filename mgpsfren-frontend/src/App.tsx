@@ -4,7 +4,7 @@ import LoginModule from './components/LoginModule';
 import FeeManagementModule from './components/FeeManagementModule';
 import EnquiryModule from './components/EnquiryModule';
 import { ClassScheduleModule } from './components/ClassScheduleModule';
-import { buildSchoolPreview, checkSuperAdminStatus, createSchool, createSubscriptionPlan, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, updateSchoolStatus, deleteSchool, registerUser, fetchUsers, updateUser, updateUserStatus, deleteUser, setAuthToken, fetchAcademicYears, fetchAcademicYearOptions, createAcademicYear, activateAcademicYear, fetchClasses, fetchClassOptions, createClass, fetchSections, createSection, fetchSubjects, fetchSubjectOptions, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures, fetchEnquiries, fetchSchedules, createSchedule, updateSchedule, deleteSchedule, duplicateSchedule } from './api';
+import { buildSchoolPreview, checkSuperAdminStatus, createSchool, createSubscriptionPlan, fetchSchools, fetchSubscriptionPlans, login, registerSuperAdmin, getSchool, getTenantSchoolOverview, updateSchool, updateSchoolStatus, deleteSchool, registerUser, fetchUsers, updateUser, updateUserStatus, deleteUser, setAuthToken, fetchAcademicYears, fetchAcademicYearOptions, createAcademicYear, activateAcademicYear, fetchClasses, fetchClassOptions, createClass, fetchSections, createSection, fetchSubjects, fetchSubjectOptions, createSubject, admitStudent, fetchStudents, updateStudent, deleteStudent, onboardStaff, fetchStaff, updateStaff, deleteStaff, fetchFeeStructures, fetchEnquiries, fetchSchedules, createSchedule, updateSchedule, deleteSchedule, duplicateSchedule, resolveLogoUrl } from './api';
 import type {
   AuthProfile,
   SchoolRegistrationPayload,
@@ -1350,7 +1350,7 @@ export default function App() {
         <header className="topbar">
           <div className="brand">
             {authProfile.schoolId && tenantOverview?.school.logoUrl ? (
-              <img src={tenantOverview.school.logoUrl} alt="School logo" className="school-logo" />
+              <img src={resolveLogoUrl(tenantOverview.school.logoUrl)} alt="School logo" className="school-logo" />
             ) : null}
             <div>
               <p className="eyebrow">{authProfile.schoolId ? (tenantOverview?.school.schoolName ?? 'Loading school...') : 'MGPS Franchise Console'}</p>

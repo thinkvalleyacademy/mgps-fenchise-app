@@ -1,6 +1,8 @@
 package com.mgps.user.entity;
 
+import com.mgps.common.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -38,7 +40,8 @@ public class AppUser implements Persistable<UUID> {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(length = 20)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String phone;
 
     @Column(name = "password_hash", nullable = false, length = 255)

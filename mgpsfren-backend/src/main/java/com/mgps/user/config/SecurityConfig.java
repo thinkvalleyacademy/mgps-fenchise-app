@@ -57,6 +57,9 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers("/setup/superadmin").permitAll()
                 .requestMatchers(HttpMethod.POST, "/enquiries").permitAll()
+                // Plain <img> tags can't send an Authorization header; see the
+                // comment on FileStorageController.download for the tradeoff.
+                .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
                 // Everything else requires a token. The previous permitAll block
                 // ("public endpoints for testing") exposed every school, user and
                 // enquiry across all tenants to unauthenticated callers.

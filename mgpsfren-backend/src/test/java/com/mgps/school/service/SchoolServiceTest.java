@@ -14,6 +14,7 @@ import com.mgps.school.exception.DatabaseProvisioningException;
 import com.mgps.school.repository.SchoolDomainRepository;
 import com.mgps.school.repository.SchoolRepository;
 import com.mgps.school.repository.SubscriptionPlanRepository;
+import com.mgps.storage.FileStorageService;
 import com.mgps.tenant.RoutingDataSource;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,7 +58,10 @@ class SchoolServiceTest {
 
     @Mock
     private TenantSchoolDataService tenantSchoolDataService;
-    
+
+    @Mock
+    private FileStorageService fileStorageService;
+
     @InjectMocks
     private SchoolService schoolService;
     
@@ -128,7 +132,9 @@ class SchoolServiceTest {
                 .isPrimary(true)
                 .isActive(true)
                 .build());
-        
+        when(fileStorageService.storeDataUrl(any(UUID.class), any(String.class), any(String.class)))
+            .thenReturn("/files/school/logos/test.png");
+
         // Act
         SchoolCreatedDTO result = schoolService.registerSchool(registrationDTO);
         
@@ -220,6 +226,8 @@ class SchoolServiceTest {
                 .isPrimary(true)
                 .isActive(true)
                 .build());
+        when(fileStorageService.storeDataUrl(any(UUID.class), any(String.class), any(String.class)))
+            .thenReturn("/files/school/logos/test.png");
 
         // Act
         SchoolCreatedDTO result = schoolService.registerSchool(freePlanDto);
@@ -241,6 +249,8 @@ class SchoolServiceTest {
         when(subscriptionPlanRepository.findById(registrationDTO.getSubscriptionPlanId()))
             .thenReturn(Optional.of(subscriptionPlan));
         when(schoolRepository.save(any(School.class))).thenReturn(school);
+        when(fileStorageService.storeDataUrl(any(UUID.class), any(String.class), any(String.class)))
+            .thenReturn("/files/school/logos/test.png");
         doThrow(new RuntimeException("Database creation failed"))
             .when(databaseProvisioningService).provisionDatabase(any(School.class));
         

@@ -1,6 +1,8 @@
 package com.mgps.student.entity;
 
+import com.mgps.common.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -39,21 +41,27 @@ public class Student {
     @Column(length = 20)
     private Gender gender;
 
-    @Column(length = 255)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String email;
 
-    @Column(length = 20)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String phone;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(columnDefinition = "TEXT")
     private String address;
 
-    @Column(name = "parent_name", length = 150)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "parent_name", columnDefinition = "TEXT")
     private String parentName;
 
-    @Column(name = "parent_phone", length = 20)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "parent_phone", columnDefinition = "TEXT")
     private String parentPhone;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "medical_info", columnDefinition = "TEXT")
     private String medicalInfo;
 

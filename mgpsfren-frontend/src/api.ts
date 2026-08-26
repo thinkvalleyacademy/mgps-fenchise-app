@@ -14,6 +14,17 @@ import type {
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:8080/api';
 
+/**
+ * School logos are now served from disk via `/files/...` rather than stored
+ * as base64. Prefix a relative reference with the API origin; pass `data:`
+ * URLs and already-absolute URLs (old rows) through unchanged.
+ */
+export function resolveLogoUrl(logoUrl: string | null | undefined): string | undefined {
+  if (!logoUrl) return undefined;
+  if (logoUrl.startsWith('data:') || /^https?:\/\//i.test(logoUrl)) return logoUrl;
+  return `${apiBaseUrl}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`;
+}
+
 let authToken: string | null = null;
 
 export function setAuthToken(token: string | null) {

@@ -8,8 +8,17 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtServiceTest {
+
+    @Test
+    void shouldRejectBlankSecret() {
+        assertThatThrownBy(() -> new JwtService("", 86400000L, 604800000L))
+            .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> new JwtService(null, 86400000L, 604800000L))
+            .isInstanceOf(IllegalStateException.class);
+    }
 
     @Test
     void shouldGenerateAndValidateToken() {

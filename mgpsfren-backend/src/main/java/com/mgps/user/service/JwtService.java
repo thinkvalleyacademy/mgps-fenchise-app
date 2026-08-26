@@ -22,9 +22,14 @@ public class JwtService {
     private final long expirationMs;
     private final long refreshExpirationMs;
 
-    public JwtService(@Value("${app.jwt.secret-key}") String secretKey,
+    public JwtService(@Value("${app.jwt.secret-key:}") String secretKey,
                       @Value("${app.jwt.expiration}") long expirationMs,
                       @Value("${app.jwt.refresh-expiration}") long refreshExpirationMs) {
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException(
+                "app.jwt.secret-key is not set. Set the JWT_SECRET environment variable to a long, random value "
+                    + "(e.g. `openssl rand -base64 32`) before starting this profile.");
+        }
         byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
         this.expirationMs = expirationMs;

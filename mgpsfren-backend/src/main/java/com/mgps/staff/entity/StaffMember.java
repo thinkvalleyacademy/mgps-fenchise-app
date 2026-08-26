@@ -1,6 +1,8 @@
 package com.mgps.staff.entity;
 
+import com.mgps.common.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -44,12 +46,15 @@ public class StaffMember {
     @Column(name = "department_name", length = 150)
     private String departmentName;
 
-    @Column(length = 255)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String email;
 
-    @Column(length = 20)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "TEXT")
     private String phone;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(columnDefinition = "TEXT")
     private String address;
 
@@ -65,7 +70,8 @@ public class StaffMember {
     @Column(name = "payroll_employee_id", length = 100)
     private String payrollEmployeeId;
 
-    @Column(name = "payroll_account_reference", length = 100)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "payroll_account_reference", columnDefinition = "TEXT")
     private String payrollAccountReference;
 
     @Enumerated(EnumType.STRING)

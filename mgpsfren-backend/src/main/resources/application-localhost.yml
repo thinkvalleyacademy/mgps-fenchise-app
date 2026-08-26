@@ -32,3 +32,11 @@ logging:
   level:
     root: INFO
     com.mgps: INFO
+
+app:
+  jwt:
+    secret-key: local-dev-only-secret-not-for-any-shared-environment
+  encryption:
+    # Dev-only key so `localhost` boots with zero setup. Never reuse this value
+    # anywhere it could be shared or deployed.
+    key: VhluCDz9dSgWwDskcR3tJ5gSQmTTgHblq+5qveqm9v4=

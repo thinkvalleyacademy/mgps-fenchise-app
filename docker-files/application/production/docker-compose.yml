@@ -9,15 +9,19 @@ services:
     networks:
       - mgps-shared
     environment:
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE: prod
       SERVER_PORT: 8080
       SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-mgps_master}
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres123}
-      APP_JWT_SECRET_KEY: ${JWT_SECRET:-change-this-in-production}
+      APP_JWT_SECRET_KEY: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      APP_ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-https://mgpsfren.thinkvalleysoftwares.in,http://100.101.103.63:6080}
-    ports:
-      - "${BACKEND_PORT:-8081}:8080"
+    volumes:
+      - mgps-uploads:/app/uploads
+    # No host port publish here on purpose: the backend is only reachable via
+    # nginx-proxy over the internal mgps-shared network, so nginx's CORS/rate
+    # limiting rules can't be bypassed by hitting the backend directly.
 
   frontend:
     build:
@@ -53,3 +57,6 @@ networks:
   mgps-shared:
     name: mgps-shared
     external: true
+
+volumes:
+  mgps-uploads:

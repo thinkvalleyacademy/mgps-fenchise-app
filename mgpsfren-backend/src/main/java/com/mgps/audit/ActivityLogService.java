@@ -2,6 +2,7 @@ package com.mgps.audit;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mgps.common.util.PiiMasking;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -29,7 +30,7 @@ public class ActivityLogService {
                 (id, school_id, actor_user_id, actor_email, action, entity_type, entity_id, details, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, CAST(? AS JSONB), ?)
             """,
-            UUID.randomUUID(), schoolId, actorUserId, actorEmail, action, entityType,
+            UUID.randomUUID(), schoolId, actorUserId, PiiMasking.maskEmail(actorEmail), action, entityType,
             entityId != null ? entityId.toString() : null, toJson(details), LocalDateTime.now());
     }
 
