@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,6 +18,8 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
     boolean existsByEmail(String email);
     boolean existsByRole(UserRole role);
     Page<AppUser> findBySchoolId(UUID schoolId, Pageable pageable);
+    List<AppUser> findBySchoolId(UUID schoolId);
+    List<AppUser> findBySchoolIdAndRole(UUID schoolId, UserRole role);
     Page<AppUser> findByStatus(UserStatus status, Pageable pageable);
     Page<AppUser> findByRole(UserRole role, Pageable pageable);
 }

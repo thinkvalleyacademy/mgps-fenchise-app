@@ -54,6 +54,9 @@ public class StudentFee {
     @Column(name = "discount_reason", length = 255)
     private String discountReason;
 
+    @Column(name = "fine_accrued", nullable = false, precision = 12, scale = 2)
+    private BigDecimal fineAccrued = BigDecimal.ZERO;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -143,6 +146,14 @@ public class StudentFee {
 
     public void setDiscountReason(String discountReason) {
         this.discountReason = discountReason;
+    }
+
+    public BigDecimal getFineAccrued() {
+        return fineAccrued;
+    }
+
+    public void setFineAccrued(BigDecimal fineAccrued) {
+        this.fineAccrued = fineAccrued;
     }
 
     public LocalDateTime getCreatedAt() {

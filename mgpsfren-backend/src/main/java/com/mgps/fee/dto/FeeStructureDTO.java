@@ -19,6 +19,9 @@ public class FeeStructureDTO {
     private Boolean isDefault;
     private Boolean isActive;
     private String recurrenceType; // ONE_TIME, MONTHLY
+    private String fineType; // NONE, FLAT, PERCENTAGE_PER_MONTH
+    private BigDecimal fineAmount;
+    private Integer gracePeriodDays;
 
     public FeeStructureDTO() {
     }
@@ -125,5 +128,29 @@ public class FeeStructureDTO {
 
     public void setRecurrenceType(String recurrenceType) {
         this.recurrenceType = recurrenceType;
+    }
+
+    public String getFineType() {
+        return fineType;
+    }
+
+    public void setFineType(String fineType) {
+        this.fineType = fineType;
+    }
+
+    public BigDecimal getFineAmount() {
+        return fineAmount;
+    }
+
+    public void setFineAmount(BigDecimal fineAmount) {
+        this.fineAmount = fineAmount;
+    }
+
+    public Integer getGracePeriodDays() {
+        return gracePeriodDays;
+    }
+
+    public void setGracePeriodDays(Integer gracePeriodDays) {
+        this.gracePeriodDays = gracePeriodDays;
     }
 }

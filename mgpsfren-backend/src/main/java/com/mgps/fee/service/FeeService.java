@@ -22,9 +22,11 @@ import com.mgps.fee.repository.FeeCategoryRepository;
 import com.mgps.fee.repository.FeePaymentRepository;
 import com.mgps.fee.repository.FeeSettingsRepository;
 import com.mgps.fee.repository.FeeStructureRepository;
+import com.mgps.fee.entity.FineType;
 import com.mgps.fee.repository.StudentFeeRepository;
 import com.mgps.student.entity.Student;
 import com.mgps.student.repository.StudentRepository;
+import com.mgps.tenant.TenantGuard;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -77,9 +79,13 @@ public class FeeService {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private TenantGuard tenantGuard;
+
     // --- Fee Category Operations ---
 
     public FeeCategoryDTO createCategory(FeeCategoryDTO dto) {
+        tenantGuard.assertSchoolAccessible(dto.getSchoolId());
         categoryRepository.findBySchoolIdAndNameIgnoreCase(dto.getSchoolId(), dto.getName())
                 .ifPresent(existing -> {
                     throw new BusinessLogicException("Fee category already exists");
@@ -97,6 +103,7 @@ public class FeeService {
     }
 
     public List<FeeCategoryDTO> getCategories(UUID schoolId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         ensureDefaultCategories(schoolId);
         return categoryRepository.findBySchoolId(schoolId).stream()
                 .map(this::mapToDTO)
@@ -106,6 +113,8 @@ public class FeeService {
     // --- Fee Structure Operations ---
 
     public List<FeeStructureDTO> createStructure(FeeStructureDTO dto) {
+        tenantGuard.assertSchoolAccessible(dto.getSchoolId());
+
         List<UUID> targetClassIds;
         if (Boolean.TRUE.equals(dto.getApplyToAllClasses())) {
             targetClassIds = Collections.singletonList(null);
@@ -120,6 +129,9 @@ public class FeeService {
         FeeCategory category = categoryRepository.findById(dto.getFeeCategoryId())
                 .orElseThrow(() -> new RuntimeException("Fee Category not found"));
         String recurrenceType = resolveRecurrenceType(dto.getRecurrenceType(), category.getName());
+        FineType fineType = resolveFineType(dto.getFineType());
+        BigDecimal fineAmount = dto.getFineAmount() != null ? dto.getFineAmount() : BigDecimal.ZERO;
+        Integer gracePeriodDays = dto.getGracePeriodDays() != null ? dto.getGracePeriodDays() : 0;
 
         List<FeeStructureDTO> created = new ArrayList<>();
         for (UUID classId : targetClassIds) {
@@ -134,12 +146,16 @@ public class FeeService {
             structure.setIsDefault(dto.getIsDefault() != null ? dto.getIsDefault() : false);
             structure.setRecurrenceType(recurrenceType);
             structure.setActive(true);
+            structure.setFineType(fineType);
+            structure.setFineAmount(fineAmount);
+            structure.setGracePeriodDays(gracePeriodDays);
             created.add(mapToDTO(structureRepository.save(structure)));
         }
         return created;
     }
 
     public List<FeeStructureDTO> getStructures(UUID schoolId, UUID academicYearId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         return structureRepository.findBySchoolIdAndAcademicYearId(schoolId, academicYearId).stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
@@ -221,6 +237,7 @@ public class FeeService {
     // --- Reporting Operations ---
 
     public SchoolFeeReport getSchoolOverallReport(UUID schoolId, UUID academicYearId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         List<StudentFee> allFees = studentFeeRepository.findBySchoolId(schoolId).stream()
                 .filter(sf -> academicYearId.equals(sf.getFeeStructure().getAcademicYearId()))
                 .collect(Collectors.toList());
@@ -241,6 +258,7 @@ public class FeeService {
     }
 
     public List<ClassFeeReport> getClassWiseReport(UUID schoolId, UUID academicYearId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         // Fetch all classes for the school
         return classRepository.findBySchoolId(schoolId).stream().map(c -> {
             List<StudentFee> classFees = studentFeeRepository.findBySchoolId(schoolId).stream()
@@ -344,6 +362,7 @@ public class FeeService {
      * yearly-payment discount (see FeeSettings), computed server-side.
      */
     public BulkFeePaymentResultDTO processBulkPayment(BulkFeePaymentRequestDTO dto) {
+        tenantGuard.assertSchoolAccessible(dto.getSchoolId());
         if (dto.getStudentId() == null) {
             throw new BusinessLogicException("Student is required");
         }
@@ -461,11 +480,13 @@ public class FeeService {
     // --- Fee Settings Operations ---
 
     public FeeSettingsDTO getSettings(UUID schoolId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         FeeSettings settings = getOrCreateSettingsEntity(schoolId);
         return new FeeSettingsDTO(settings.getSchoolId(), settings.getYearlyDiscountPercent());
     }
 
     public FeeSettingsDTO updateSettings(UUID schoolId, BigDecimal yearlyDiscountPercent) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         if (yearlyDiscountPercent == null
                 || yearlyDiscountPercent.compareTo(BigDecimal.ZERO) < 0
                 || yearlyDiscountPercent.compareTo(new BigDecimal(100)) > 0) {
@@ -488,6 +509,7 @@ public class FeeService {
     }
 
     public List<FeePaymentDTO> getRecentPayments(UUID schoolId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         return paymentRepository.findBySchoolId(schoolId).stream()
                 .sorted((p1, p2) -> p2.getCreatedAt().compareTo(p1.getCreatedAt()))
                 .limit(10)
@@ -551,10 +573,62 @@ public class FeeService {
     }
 
     private BigDecimal calculateOutstandingBalance(StudentFee sf) {
-        return clampZero(calculateTotalDueTillDate(sf).subtract(safeAmount(sf.getAmountPaid())).subtract(safeAmount(sf.getDiscountAmount())));
+        return clampZero(calculateTotalDueTillDate(sf)
+                .add(calculateFine(sf))
+                .subtract(safeAmount(sf.getAmountPaid()))
+                .subtract(safeAmount(sf.getDiscountAmount())));
+    }
+
+    /**
+     * Late-payment fine for a one-time fee whose due date (plus grace period) has
+     * passed. Always recomputed from the structure's fine config rather than trusted
+     * from {@link StudentFee#getFineAccrued()}, so it's correct even between
+     * scheduled refreshes. Monthly-recurring fees have no single due date in the
+     * current data model ({@code dueDate} is null for them) and are not fined.
+     */
+    private BigDecimal calculateFine(StudentFee sf) {
+        FeeStructure structure = sf.getFeeStructure();
+        if (structure == null || structure.getFineType() == null || structure.getFineType() == FineType.NONE) {
+            return BigDecimal.ZERO;
+        }
+
+        LocalDate dueDate = sf.getDueDate();
+        if (dueDate == null) {
+            return BigDecimal.ZERO;
+        }
+
+        int graceDays = structure.getGracePeriodDays() == null ? 0 : Math.max(0, structure.getGracePeriodDays());
+        LocalDate effectiveDueDate = dueDate.plusDays(graceDays);
+        LocalDate today = LocalDate.now();
+        if (!today.isAfter(effectiveDueDate)) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal principalOutstanding = clampZero(sf.getAmountDue()
+                .subtract(safeAmount(sf.getAmountPaid()))
+                .subtract(safeAmount(sf.getDiscountAmount())));
+        if (principalOutstanding.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal fineRate = safeAmount(structure.getFineAmount());
+        if (structure.getFineType() == FineType.FLAT) {
+            return fineRate;
+        }
+
+        // PERCENTAGE_PER_MONTH: fineRate% of the outstanding principal, per whole month overdue.
+        long daysOverdue = ChronoUnit.DAYS.between(effectiveDueDate, today);
+        int monthsOverdue = Math.max(1, (int) Math.ceil(daysOverdue / 30.0));
+        BigDecimal monthlyRate = fineRate.divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP);
+        return principalOutstanding.multiply(monthlyRate).multiply(BigDecimal.valueOf(monthsOverdue))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private void updateStatus(StudentFee studentFee) {
+        // Persist the current fine for visibility/reporting even outside a live
+        // recompute; calculateOutstandingBalance below recomputes it fresh regardless.
+        studentFee.setFineAccrued(calculateFine(studentFee));
+
         BigDecimal totalDue = calculateTotalDueTillDate(studentFee);
         BigDecimal outstanding = calculateOutstandingBalance(studentFee);
 
@@ -607,6 +681,17 @@ public class FeeService {
         return RECURRENCE_ONE_TIME;
     }
 
+    private FineType resolveFineType(String requested) {
+        if (requested == null || requested.isBlank()) {
+            return FineType.NONE;
+        }
+        try {
+            return FineType.valueOf(requested.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessLogicException("Invalid fine type: " + requested);
+        }
+    }
+
     private void ensureDefaultCategories(UUID schoolId) {
         ensureCategory(schoolId, "Admission fee", "One-time admission fee");
         ensureCategory(schoolId, "Tuition fee", "Monthly tuition fee");
@@ -651,6 +736,9 @@ public class FeeService {
         dto.setIsDefault(entity.getIsDefault());
         dto.setActive(entity.getActive());
         dto.setRecurrenceType(entity.getRecurrenceType());
+        dto.setFineType(entity.getFineType() != null ? entity.getFineType().name() : FineType.NONE.name());
+        dto.setFineAmount(entity.getFineAmount());
+        dto.setGracePeriodDays(entity.getGracePeriodDays());
         return dto;
     }
 
@@ -668,6 +756,7 @@ public class FeeService {
         dto.setDueDate(entity.getDueDate());
         dto.setDiscountAmount(entity.getDiscountAmount());
         dto.setDiscountReason(entity.getDiscountReason());
+        dto.setFineAccrued(calculateFine(entity));
         dto.setRecurrenceType(entity.getFeeStructure().getRecurrenceType());
         dto.setTotalDueTillDate(calculateTotalDueTillDate(entity));
         dto.setOutstandingBalance(calculateOutstandingBalance(entity));

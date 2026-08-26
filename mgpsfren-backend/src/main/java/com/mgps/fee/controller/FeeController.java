@@ -12,6 +12,7 @@ import com.mgps.fee.service.FeeService;
 import com.mgps.common.dto.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -20,6 +21,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/fees")
+@PreAuthorize("hasAuthority('FEE_MANAGE')")
 public class FeeController {
 
     @Autowired
@@ -63,8 +65,8 @@ public class FeeController {
     }
 
     @PatchMapping("/student-fees/{id}/discount")
-    public ResponseEntity<ApiResponse<?>> applyDiscount(@PathVariable UUID id, 
-                                                        @RequestParam BigDecimal amount, 
+    public ResponseEntity<ApiResponse<?>> applyDiscount(@PathVariable UUID id,
+                                                        @RequestParam BigDecimal amount,
                                                         @RequestParam String reason) {
         feeService.applyDiscount(id, amount, reason);
         return ResponseEntity.ok(ApiResponse.success(null, "Discount applied successfully"));

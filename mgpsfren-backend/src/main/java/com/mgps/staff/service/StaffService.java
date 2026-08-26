@@ -8,6 +8,8 @@ import com.mgps.staff.entity.*;
 import com.mgps.staff.repository.StaffAttendanceRepository;
 import com.mgps.staff.repository.StaffLeaveRepository;
 import com.mgps.staff.repository.StaffMemberRepository;
+import com.mgps.tenant.TenantGuard;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -28,18 +30,30 @@ public class StaffService {
     private final StaffAttendanceRepository attendanceRepository;
     private final StaffLeaveRepository leaveRepository;
     private final AcademicDepartmentRepository departmentRepository;
+    private final TenantGuard tenantGuard;
 
     public StaffService(StaffMemberRepository staffMemberRepository,
                         StaffAttendanceRepository attendanceRepository,
                         StaffLeaveRepository leaveRepository,
                         AcademicDepartmentRepository departmentRepository) {
+        this(staffMemberRepository, attendanceRepository, leaveRepository, departmentRepository, null);
+    }
+
+    @Autowired
+    public StaffService(StaffMemberRepository staffMemberRepository,
+                        StaffAttendanceRepository attendanceRepository,
+                        StaffLeaveRepository leaveRepository,
+                        AcademicDepartmentRepository departmentRepository,
+                        TenantGuard tenantGuard) {
         this.staffMemberRepository = staffMemberRepository;
         this.attendanceRepository = attendanceRepository;
         this.leaveRepository = leaveRepository;
         this.departmentRepository = departmentRepository;
+        this.tenantGuard = tenantGuard != null ? tenantGuard : new TenantGuard();
     }
 
     public StaffResponse onboardStaff(StaffAdmissionRequest request) {
+        tenantGuard.assertSchoolAccessible(request.getSchoolId());
         AcademicDepartment department = validateDepartment(request.getSchoolId(), request.getDepartmentId());
         String employeeCode = generateEmployeeCode(request.getSchoolId());
         while (staffMemberRepository.existsByEmployeeCode(employeeCode)) {
@@ -103,10 +117,12 @@ public class StaffService {
     }
 
     public Page<StaffResponse> getStaffBySchool(UUID schoolId, Pageable pageable) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         return staffMemberRepository.findBySchoolId(schoolId, pageable).map(this::map);
     }
 
     public List<StaffResponse> getStaffByDepartment(UUID schoolId, UUID departmentId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         return staffMemberRepository.findBySchoolIdAndDepartmentId(schoolId, departmentId).stream()
             .map(this::map)
             .collect(Collectors.toList());

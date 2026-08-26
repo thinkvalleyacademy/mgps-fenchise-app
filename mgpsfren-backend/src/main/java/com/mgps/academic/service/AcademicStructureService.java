@@ -5,6 +5,8 @@ import com.mgps.academic.entity.*;
 import com.mgps.academic.repository.*;
 import com.mgps.common.exception.BusinessLogicException;
 import com.mgps.common.exception.ResourceNotFoundException;
+import com.mgps.tenant.TenantGuard;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +54,7 @@ public class AcademicStructureService {
     private final AcademicSubjectRepository academicSubjectRepository;
     private final AcademicDepartmentRepository academicDepartmentRepository;
     private final AcademicHouseRepository academicHouseRepository;
+    private final TenantGuard tenantGuard;
 
     public AcademicStructureService(AcademicYearRepository academicYearRepository,
                                     AcademicClassRepository academicClassRepository,
@@ -60,6 +63,19 @@ public class AcademicStructureService {
                                     AcademicSubjectRepository academicSubjectRepository,
                                     AcademicDepartmentRepository academicDepartmentRepository,
                                     AcademicHouseRepository academicHouseRepository) {
+        this(academicYearRepository, academicClassRepository, academicSectionRepository, academicStreamRepository,
+            academicSubjectRepository, academicDepartmentRepository, academicHouseRepository, null);
+    }
+
+    @Autowired
+    public AcademicStructureService(AcademicYearRepository academicYearRepository,
+                                    AcademicClassRepository academicClassRepository,
+                                    AcademicSectionRepository academicSectionRepository,
+                                    AcademicStreamRepository academicStreamRepository,
+                                    AcademicSubjectRepository academicSubjectRepository,
+                                    AcademicDepartmentRepository academicDepartmentRepository,
+                                    AcademicHouseRepository academicHouseRepository,
+                                    TenantGuard tenantGuard) {
         this.academicYearRepository = academicYearRepository;
         this.academicClassRepository = academicClassRepository;
         this.academicSectionRepository = academicSectionRepository;
@@ -67,12 +83,14 @@ public class AcademicStructureService {
         this.academicSubjectRepository = academicSubjectRepository;
         this.academicDepartmentRepository = academicDepartmentRepository;
         this.academicHouseRepository = academicHouseRepository;
+        this.tenantGuard = tenantGuard != null ? tenantGuard : new TenantGuard();
     }
 
     public AcademicYearResponse createAcademicYear(AcademicYearRequest request) {
         if (request.getSchoolId() == null) {
             throw new BusinessLogicException("School ID is required");
         }
+        tenantGuard.assertSchoolAccessible(request.getSchoolId());
         AcademicYear year = new AcademicYear(
             UUID.randomUUID(),
             request.getSchoolId(),
@@ -108,19 +126,31 @@ public class AcademicStructureService {
     }
 
     public List<AcademicYearResponse> getAcademicYears(UUID schoolId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         return academicYearRepository.findBySchoolId(schoolId).stream().map(this::mapYear).collect(Collectors.toList());
     }
 
     public AcademicYearResponse activateAcademicYear(UUID yearId, UUID schoolId) {
-        academicYearRepository.findBySchoolId(schoolId).forEach(year -> {
-            if (Boolean.TRUE.equals(year.getIsActive())) {
-                year.setIsActive(false);
-                academicYearRepository.save(year);
+        tenantGuard.assertSchoolAccessible(schoolId);
+
+        // Trust the fetched entity's own schoolId, not the request param, before
+        // mutating anything — otherwise a schoolId that doesn't match yearId's real
+        // owner makes the "deactivate all active years for schoolId" step below a
+        // silent no-op (no rows match) while this year still gets activated,
+        // leaving two academic years marked active at once.
+        AcademicYear year = academicYearRepository.findById(yearId)
+            .orElseThrow(() -> new ResourceNotFoundException("Academic year not found"));
+        if (!year.getSchoolId().equals(schoolId)) {
+            throw new ResourceNotFoundException("Academic year not found");
+        }
+
+        academicYearRepository.findBySchoolId(schoolId).forEach(existing -> {
+            if (Boolean.TRUE.equals(existing.getIsActive()) && !existing.getId().equals(yearId)) {
+                existing.setIsActive(false);
+                academicYearRepository.save(existing);
             }
         });
 
-        AcademicYear year = academicYearRepository.findById(yearId)
-            .orElseThrow(() -> new ResourceNotFoundException("Academic year not found"));
         year.setIsActive(true);
         return mapYear(academicYearRepository.save(year));
     }
@@ -129,6 +159,7 @@ public class AcademicStructureService {
         if (request.getSchoolId() == null) {
             throw new BusinessLogicException("School ID is required");
         }
+        tenantGuard.assertSchoolAccessible(request.getSchoolId());
         UUID yearId = request.getAcademicYearId();
         if (yearId == null) {
             yearId = academicYearRepository.findBySchoolIdAndIsActiveTrue(request.getSchoolId())
@@ -152,6 +183,7 @@ public class AcademicStructureService {
     }
 
     public List<AcademicClassResponse> getAcademicClasses(UUID schoolId, UUID academicYearId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         List<AcademicClass> classes = academicYearId != null
             ? academicClassRepository.findBySchoolIdAndAcademicYearId(schoolId, academicYearId)
             : academicClassRepository.findBySchoolId(schoolId);
@@ -162,6 +194,7 @@ public class AcademicStructureService {
         if (request.getSchoolId() == null) {
             throw new BusinessLogicException("School ID is required");
         }
+        tenantGuard.assertSchoolAccessible(request.getSchoolId());
         AcademicSection section = new AcademicSection(
             UUID.randomUUID(),
             request.getSchoolId(),
@@ -186,6 +219,7 @@ public class AcademicStructureService {
         if (request.getSchoolId() == null) {
             throw new BusinessLogicException("School ID is required");
         }
+        tenantGuard.assertSchoolAccessible(request.getSchoolId());
         AcademicStream stream = new AcademicStream(
             UUID.randomUUID(),
             request.getSchoolId(),
@@ -210,6 +244,7 @@ public class AcademicStructureService {
         if (request.getSchoolId() == null) {
             throw new BusinessLogicException("School ID is required");
         }
+        tenantGuard.assertSchoolAccessible(request.getSchoolId());
         AcademicSubject subject = new AcademicSubject(
             UUID.randomUUID(),
             request.getSchoolId(),
@@ -236,6 +271,7 @@ public class AcademicStructureService {
         if (request.getSchoolId() == null) {
             throw new BusinessLogicException("School ID is required");
         }
+        tenantGuard.assertSchoolAccessible(request.getSchoolId());
         AcademicDepartment department = new AcademicDepartment(
             UUID.randomUUID(),
             request.getSchoolId(),
@@ -251,6 +287,7 @@ public class AcademicStructureService {
     }
 
     public List<AcademicSimpleResponse> getDepartments(UUID schoolId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         return academicDepartmentRepository.findBySchoolId(schoolId).stream()
             .map(department -> mapSimple(department.getId(), department.getSchoolId(), department.getName(), department.getIsActive(), department.getCreatedAt()))
             .collect(Collectors.toList());
@@ -260,6 +297,7 @@ public class AcademicStructureService {
         if (request.getSchoolId() == null) {
             throw new BusinessLogicException("School ID is required");
         }
+        tenantGuard.assertSchoolAccessible(request.getSchoolId());
         AcademicHouse house = new AcademicHouse(
             UUID.randomUUID(),
             request.getSchoolId(),
@@ -275,6 +313,7 @@ public class AcademicStructureService {
     }
 
     public List<AcademicSimpleResponse> getHouses(UUID schoolId) {
+        tenantGuard.assertSchoolAccessible(schoolId);
         return academicHouseRepository.findBySchoolId(schoolId).stream()
             .map(house -> mapSimple(house.getId(), house.getSchoolId(), house.getName(), house.getIsActive(), house.getCreatedAt()))
             .collect(Collectors.toList());
