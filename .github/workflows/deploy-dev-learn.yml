@@ -1,0 +1,25 @@
+name: Deploy to dev-learn
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, dev-learn]
+    steps:
+      - name: Pull latest code
+        run: |
+          cd /home/mgps01/mgpsv2/code-dev-learn/mgps-fenchise-app
+          git fetch origin dev
+          git reset --hard origin/dev
+
+      - name: Rebuild and restart dev-learn stack
+        run: |
+          cd /home/mgps01/mgpsv2/dev-learn
+          docker compose -p mgps-dev-learn-app up -d --build
+
+      - name: Show status
+        run: |
+          cd /home/mgps01/mgpsv2/dev-learn
+          docker compose -p mgps-dev-learn-app ps
