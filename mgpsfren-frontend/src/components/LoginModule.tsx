@@ -255,8 +255,17 @@ export default function LoginModule({
           <button type="button" className="secondary" onClick={() => setView('forgot-password')}>
             Forgot password?
           </button>
+          {loginMode === 'client' && (
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => { window.location.href = '/setup/superadmin'; }}
+            >
+              Sign Up
+            </button>
+          )}
         </div>
-        
+
         <div style={{ marginTop: '24px', padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
           <p className="hint" style={{ margin: 0, fontSize: '0.8rem' }}>
             <strong>Security Notice:</strong> This session is encrypted. If you are an admin of a franchise school, please provide your school code for direct access.
