@@ -54,6 +54,13 @@ services:
       # `docker info | grep "Docker Root Dir"`) — override via .env there.
       - ${DOCKER_ROOT_DIR:-/var/lib/docker}:${DOCKER_ROOT_DIR:-/var/lib/docker}:ro
       - /dev/disk:/dev/disk:ro
+      # Without this, cAdvisor's Docker container factory fails to register
+      # (no socket at the default path under rootless Docker) and it falls
+      # back to raw cgroup metrics with no per-container name/image labels
+      # — the dashboard's container_memory_usage_bytes panel needs those.
+      # Root-mode Docker already has a socket at the default path, so this
+      # is a no-op there. Find yours with `docker context inspect | grep Host`.
+      - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock:ro
     networks:
       - monitoring-net
 

@@ -48,7 +48,11 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/health/**",
                     "/actuator/health",
-                    "/actuator/info"
+                    "/actuator/info",
+                    // Scraped by Prometheus over the internal Docker network only —
+                    // nginx-proxy has no route to /api/actuator/**, so this isn't
+                    // reachable from outside the app stack's own network.
+                    "/actuator/prometheus"
                 ).permitAll()
                 .requestMatchers(
                     "/auth/login",
