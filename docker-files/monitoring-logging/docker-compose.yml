@@ -49,7 +49,10 @@ services:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
       - /sys:/sys:ro
-      - /var/lib/docker:/var/lib/docker:ro
+      # Root-mode Docker always uses /var/lib/docker; rootless Docker puts
+      # its data root under the user's home instead (check with
+      # `docker info | grep "Docker Root Dir"`) — override via .env there.
+      - ${DOCKER_ROOT_DIR:-/var/lib/docker}:${DOCKER_ROOT_DIR:-/var/lib/docker}:ro
       - /dev/disk:/dev/disk:ro
     networks:
       - monitoring-net
