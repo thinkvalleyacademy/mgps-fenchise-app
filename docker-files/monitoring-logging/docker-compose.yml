@@ -140,7 +140,7 @@ services:
       - monitoring-net
 
   filebeat:
-    image: docker.elastic.co/beats/filebeat/filebeat:8.15.1
+    image: elastic/filebeat:8.15.1
     restart: unless-stopped
     user: root # required for filebeat to read /var/log/mgps and its own data dir
     depends_on:
