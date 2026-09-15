@@ -97,6 +97,9 @@ services:
       plugins.security.disabled: "true"
       bootstrap.memory_lock: "true"
       OPENSEARCH_JAVA_OPTS: ${OPENSEARCH_JAVA_OPTS:--Xms1g -Xmx1g}
+      # Required since OpenSearch 2.12 even with the security plugin disabled
+      # above — the image's demo-config installer quits without it.
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD:?Set OPENSEARCH_INITIAL_ADMIN_PASSWORD in .env}
     ulimits:
       # -1 (unlimited) fails outright under rootless Docker — the container
       # can't be granted a ulimit higher than the host user's own, and that's
