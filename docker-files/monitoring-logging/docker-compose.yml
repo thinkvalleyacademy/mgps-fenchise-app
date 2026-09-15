@@ -42,7 +42,10 @@ services:
       - monitoring-net
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    # v0.49.1's vendored Docker client only speaks API 1.41; a modern Docker
+    # daemon (this project's servers run 29.x) requires 1.44+, so the Docker
+    # container factory failed to register at all on that version.
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
     restart: unless-stopped
     privileged: true
     # cAdvisor is its own Go binary, not the Docker CLI — it doesn't read
