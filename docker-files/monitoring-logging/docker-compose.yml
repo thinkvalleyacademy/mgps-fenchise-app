@@ -45,11 +45,11 @@ services:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
     restart: unless-stopped
     privileged: true
-    environment:
-      # Matches the socket mounted below — not the default /var/run/docker.sock
-      # path, since /var/run is already bind-mounted read-only (can't nest
-      # another mount inside a read-only mountpoint).
-      DOCKER_HOST: unix:///docker.sock
+    # cAdvisor is its own Go binary, not the Docker CLI — it doesn't read
+    # DOCKER_HOST, it needs its own -docker flag. Points at the socket
+    # mounted below (not the default /var/run/docker.sock path, since
+    # /var/run is already bind-mounted read-only above).
+    command: ["-logtostderr", "-docker=unix:///docker.sock"]
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
