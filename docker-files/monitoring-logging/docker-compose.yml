@@ -45,6 +45,11 @@ services:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
     restart: unless-stopped
     privileged: true
+    environment:
+      # Matches the socket mounted below — not the default /var/run/docker.sock
+      # path, since /var/run is already bind-mounted read-only (can't nest
+      # another mount inside a read-only mountpoint).
+      DOCKER_HOST: unix:///docker.sock
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -55,12 +60,12 @@ services:
       - ${DOCKER_ROOT_DIR:-/var/lib/docker}:${DOCKER_ROOT_DIR:-/var/lib/docker}:ro
       - /dev/disk:/dev/disk:ro
       # Without this, cAdvisor's Docker container factory fails to register
-      # (no socket at the default path under rootless Docker) and it falls
-      # back to raw cgroup metrics with no per-container name/image labels
-      # — the dashboard's container_memory_usage_bytes panel needs those.
-      # Root-mode Docker already has a socket at the default path, so this
-      # is a no-op there. Find yours with `docker context inspect | grep Host`.
-      - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock:ro
+      # and it falls back to raw cgroup metrics with no per-container
+      # name/image labels — the dashboard's container_memory_usage_bytes
+      # panel depends on those. Root-mode Docker's socket is normally at
+      # /var/run/docker.sock; rootless Docker's lives under the user's
+      # runtime dir instead — find yours with `docker context inspect | grep Host`.
+      - ${DOCKER_SOCK:-/var/run/docker.sock}:/docker.sock:ro
     networks:
       - monitoring-net
 
